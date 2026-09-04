@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://0h44a66xbioe"
-path="res://.godot/imported/aria.png-f53737cd91e25f044a5c166a3d50ad45.ctex"
+uid="uid://g0y7kqxxg6bq"
+path="res://.godot/imported/aurora.png-da90a3cb9d20dc429cf9551065735d45.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/aria.png"
-dest_files=["res://.godot/imported/aria.png-f53737cd91e25f044a5c166a3d50ad45.ctex"]
+source_file="res://assets/placeholder/portraits/aurora.png"
+dest_files=["res://.godot/imported/aurora.png-da90a3cb9d20dc429cf9551065735d45.ctex"]
 
 [params]
 

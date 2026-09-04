@@ -4,12 +4,12 @@
 [ext_resource type="Resource" path="res://data/classes/swordsman.tres" id="2"]
 [ext_resource type="Resource" path="res://data/weapons/iron_sword.tres" id="3"]
 [ext_resource type="Texture2D" path="res://assets/placeholder/units/player_sword.png" id="4"]
-[ext_resource type="Texture2D" path="res://assets/placeholder/portraits/aria.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/placeholder/portraits/aurora.png" id="5"]
 
 [resource]
 script = ExtResource("1")
-character_id = "aria"
-display_name = "Aria"
+character_id = "aurora"
+display_name = "Aurora"
 character_class = ExtResource("2")
 level = 1
 team = 0

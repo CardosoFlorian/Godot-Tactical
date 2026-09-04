@@ -1,7 +1,7 @@
 class_name DialogueCharacters
 extends RefCounted
 ## Registers runtime Dialogic characters (with placeholder portraits) under
-## simple name identifiers, so "Aria: ..." lines in any timeline resolve to
+## simple name identifiers, so "Aurora: ..." lines in any timeline resolve to
 ## a real character with a portrait, with zero dependency on the editor
 ## having indexed the project yet (which only happens once the Dialogic
 ## editor tab is opened) or on hand-authored .dch files.
@@ -21,12 +21,14 @@ extends RefCounted
 const PORTRAIT_DIR := "res://assets/placeholder/portraits/"
 
 const ROSTER := [
-	{"id": "Aria", "portrait": "aria.png"},
+	{"id": "Aurora", "portrait": "aurora.png"},
 	{"id": "Doran", "portrait": "doran.png"},
 	{"id": "Kessa", "portrait": "kessa.png"},
+	{"id": "Elyn", "portrait": "elyn.png"},
 	{"id": "Vex", "portrait": "vex.png"},
 	{"id": "Rurik", "portrait": "rurik.png"},
 	{"id": "Ilsa", "portrait": "ilsa.png"},
+	{"id": "Skarn", "portrait": "skarn.png"},
 ]
 
 ## All names render in black now that the name label has its own readable

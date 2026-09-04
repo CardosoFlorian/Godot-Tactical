@@ -10,7 +10,7 @@ const CHAPTER_2_MAP := preload("res://data/maps/chapter2.tres")
 const MAIN_SCENE_PATH := "res://scenes/main/Main.tscn"
 
 const ROSTER_UNIT_PATHS := [
-	"res://data/units/aria.tres",
+	"res://data/units/aurora.tres",
 	"res://data/units/doran.tres",
 	"res://data/units/kessa.tres",
 	"res://data/units/elyn.tres",
