@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Lance de fer"
+weapon_type = 1
+might = 7
+hit = 80
+crit = 0
+weight = 7
+min_range = 1
+max_range = 1
+uses = 35

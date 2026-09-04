@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/class_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Guerrier"
+base_hp = 24
+base_str = 8
+base_skl = 4
+base_spd = 5
+base_lck = 3
+base_def = 6
+base_res = 2
+base_mov = 5
+growth_hp = 80
+growth_str = 50
+growth_skl = 30
+growth_spd = 25
+growth_lck = 20
+growth_def = 30
+growth_res = 10
+usable_weapon_types = Array[int]([2])

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Hache de fer"
+weapon_type = 2
+might = 8
+hit = 70
+crit = 5
+weight = 9
+min_range = 1
+max_range = 1
+uses = 30
