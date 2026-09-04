@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/class_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Sniper"
+movement_type = 0
+base_hp = 27
+base_str = 12
+base_mag = 0
+base_skl = 15
+base_spd = 13
+base_lck = 8
+base_def = 7
+base_res = 5
+base_mov = 6
+base_con = 8
+growth_hp = 75
+growth_str = 40
+growth_mag = 0
+growth_skl = 55
+growth_spd = 40
+growth_lck = 30
+growth_def = 25
+growth_res = 15
+growth_con = 0
+usable_weapon_types = Array[int]([3])

@@ -1,15 +1,15 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://resources/defs/unit_data.gd" id="1"]
-[ext_resource type="Resource" path="res://data/classes/cavalier.tres" id="2"]
-[ext_resource type="Resource" path="res://data/weapons/iron_lance.tres" id="3"]
-[ext_resource type="Texture2D" path="res://assets/placeholder/units/player_lance.png" id="4"]
-[ext_resource type="Texture2D" path="res://assets/placeholder/portraits/doran.png" id="5"]
+[ext_resource type="Resource" path="res://data/classes/mage.tres" id="2"]
+[ext_resource type="Resource" path="res://data/weapons/fire_tome.tres" id="3"]
+[ext_resource type="Texture2D" path="res://assets/placeholder/units/player_tome.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/placeholder/portraits/elyn.png" id="5"]
 
 [resource]
 script = ExtResource("1")
-character_id = "doran"
-display_name = "Doran"
+character_id = "elyn"
+display_name = "Elyn"
 character_class = ExtResource("2")
 level = 1
 team = 0

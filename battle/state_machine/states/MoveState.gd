@@ -11,7 +11,7 @@ extends BattleState
 
 func enter(_previous_state_name: String = "") -> void:
 	var unit := battle.selected_unit
-	battle.move_range = battle.grid.compute_move_range(unit.grid_pos, unit.unit_data.get_mov(), unit.unit_data.team)
+	battle.move_range = battle.grid.compute_move_range(unit.grid_pos, unit.unit_data.get_mov(), unit.unit_data.team, unit.unit_data.get_movement_type())
 	battle.grid.clear_highlight()
 	battle.show_unit_range(unit, battle.move_range)
 	SignalBus.move_range_shown.emit(battle.move_range)
@@ -47,7 +47,7 @@ func handle_cancel() -> void:
 func _move_to(pos: Vector2i) -> void:
 	var unit := battle.selected_unit
 	var old_pos := unit.grid_pos
-	var path := battle.grid.find_path(old_pos, pos, unit.unit_data.team)
+	var path := battle.grid.find_path(old_pos, pos, unit.unit_data.team, unit.unit_data.get_movement_type())
 	battle.grid.clear_occupant(old_pos)
 	battle.grid.clear_highlight()
 	if path.size() > 1:

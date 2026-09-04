@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/class_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Chevalier Faucon"
+movement_type = 2
+base_hp = 28
+base_str = 10
+base_mag = 0
+base_skl = 12
+base_spd = 15
+base_lck = 10
+base_def = 8
+base_res = 11
+base_mov = 8
+base_con = 7
+growth_hp = 75
+growth_str = 35
+growth_mag = 0
+growth_skl = 40
+growth_spd = 45
+growth_lck = 30
+growth_def = 20
+growth_res = 35
+growth_con = 0
+usable_weapon_types = Array[int]([1])

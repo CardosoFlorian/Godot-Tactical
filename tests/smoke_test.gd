@@ -37,8 +37,8 @@ func _test_battle_build() -> bool:
 	var ok := true
 	var battle = _make_battle()
 
-	if battle.player_units.size() != 3:
-		printerr("FAIL: expected 3 player units, got ", battle.player_units.size())
+	if battle.player_units.size() != 4:
+		printerr("FAIL: expected 4 player units, got ", battle.player_units.size())
 		ok = false
 	if battle.enemy_units.size() != 3:
 		printerr("FAIL: expected 3 enemy units, got ", battle.enemy_units.size())

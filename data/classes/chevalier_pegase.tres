@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ClassData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/class_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/classes/chevalier_faucon.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Chevalier Pegase"
+movement_type = 2
+base_hp = 19
+base_str = 5
+base_skl = 6
+base_spd = 9
+base_lck = 6
+base_def = 4
+base_res = 6
+base_mov = 7
+base_con = 6
+growth_hp = 65
+growth_str = 30
+growth_skl = 35
+growth_spd = 40
+growth_lck = 25
+growth_def = 15
+growth_res = 30
+usable_weapon_types = Array[int]([1])
+promoted_class = ExtResource("2")
+promotion_level = 10

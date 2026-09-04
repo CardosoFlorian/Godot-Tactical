@@ -11,6 +11,8 @@
 [ext_resource type="Resource" path="res://data/units/vex.tres" id="8"]
 [ext_resource type="Resource" path="res://data/units/ilsa.tres" id="9"]
 [ext_resource type="Script" uid="uid://w8a4jtqcmyub" path="res://resources/defs/unit_spawn_data.gd" id="10"]
+[ext_resource type="Resource" path="res://data/units/elyn.tres" id="12"]
+[ext_resource type="Resource" path="res://data/units/skarn.tres" id="13"]
 
 [sub_resource type="Resource" id="1"]
 script = ExtResource("10")
@@ -37,6 +39,16 @@ script = ExtResource("10")
 unit_data = ExtResource("9")
 spawn_position = Vector2i(8, 5)
 
+[sub_resource type="Resource" id="6"]
+script = ExtResource("10")
+unit_data = ExtResource("12")
+spawn_position = Vector2i(0, 4)
+
+[sub_resource type="Resource" id="7"]
+script = ExtResource("10")
+unit_data = ExtResource("13")
+spawn_position = Vector2i(8, 7)
+
 [resource]
 script = ExtResource("1")
 default_terrain = ExtResource("2")
@@ -53,4 +65,4 @@ Vector2i(2, 2): ExtResource("11"),
 Vector2i(3, 6): ExtResource("11"),
 Vector2i(7, 1): ExtResource("11")
 }
-spawns = Array[ExtResource("10")]([SubResource("1"), SubResource("2"), SubResource("3"), SubResource("4"), SubResource("5")])
+spawns = Array[ExtResource("10")]([SubResource("1"), SubResource("2"), SubResource("3"), SubResource("4"), SubResource("5"), SubResource("6"), SubResource("7")])

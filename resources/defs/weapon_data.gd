@@ -2,7 +2,7 @@ class_name WeaponData
 extends Resource
 ## Data-driven weapon definition. Instances live as .tres files in data/weapons/.
 
-enum WeaponType { SWORD, LANCE, AXE, BOW }
+enum WeaponType { SWORD, LANCE, AXE, BOW, TOME }
 
 @export var display_name: String = "Weapon"
 @export var weapon_type: WeaponType = WeaponType.SWORD

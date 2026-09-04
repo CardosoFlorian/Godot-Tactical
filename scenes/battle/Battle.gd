@@ -26,6 +26,7 @@ func _ready() -> void:
 	rng.randomize()
 	ui.attack_pressed.connect(func(): state_machine.handle_action_chosen("attack"))
 	ui.wait_pressed.connect(func(): state_machine.handle_action_chosen("wait"))
+	ui.promote_pressed.connect(func(): state_machine.handle_action_chosen("promote"))
 	ui.end_turn_pressed.connect(_on_end_turn_pressed)
 	state_machine.setup(self)
 	if map_data:
@@ -55,7 +56,7 @@ func _process(_delta: float) -> void:
 	_hovered_unit = occupant
 	if occupant:
 		ui.show_hover_unit(occupant.unit_data)
-		var reachable := grid.compute_move_range(occupant.grid_pos, occupant.unit_data.get_mov(), occupant.unit_data.team)
+		var reachable := grid.compute_move_range(occupant.grid_pos, occupant.unit_data.get_mov(), occupant.unit_data.team, occupant.unit_data.get_movement_type())
 		show_unit_range(occupant, reachable)
 
 ## Move range in blue is the base; attack range is only drawn red on the

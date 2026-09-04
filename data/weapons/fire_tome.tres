@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Tome de feu"
+weapon_type = 4
+might = 6
+hit = 75
+crit = 0
+weight = 4
+min_range = 1
+max_range = 2
+uses = 25

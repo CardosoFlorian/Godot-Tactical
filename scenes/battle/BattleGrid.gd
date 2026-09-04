@@ -45,10 +45,8 @@ func setup(size: Vector2i, terrain_map: Dictionary, default_terrain: TerrainData
 	_astar.cell_size = Vector2(CELL_SIZE)
 	_astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
 	_astar.update()
-	for pos in _tiles:
-		var terrain: TerrainData = _tiles[pos]["terrain"]
-		_astar.set_point_solid(pos, terrain.impassable)
-		_astar.set_point_weight_scale(pos, maxf(1.0, float(terrain.move_cost)))
+	# Solids and weights depend on the mover's team and movement type, so
+	# they're (re)configured per-query in _refresh_astar_for, not here.
 
 func is_in_bounds(pos: Vector2i) -> bool:
 	return pos.x >= 0 and pos.y >= 0 and pos.x < _size.x and pos.y < _size.y
@@ -83,20 +81,24 @@ func world_to_grid(world_pos: Vector2) -> Vector2i:
 func grid_to_world(grid_pos: Vector2i) -> Vector2:
 	return Vector2(grid_pos * CELL_SIZE) + Vector2(CELL_SIZE) / 2.0
 
-## Rebuilds AStarGrid2D solidity from the current occupants, from the point
-## of view of `mover_team`: tiles occupied by the opposing side block
-## movement, tiles occupied by allies (or the mover's own tile) don't.
-func _refresh_solids_for_team(mover_team: int) -> void:
+## Rebuilds AStarGrid2D solidity AND per-tile weights from the current
+## occupants/terrain, from the point of view of `mover_team` and
+## `movement_type`: tiles occupied by the opposing side block movement
+## (allies/the mover's own tile don't), and weights come from
+## TerrainData.get_move_cost(movement_type) since a forest costs a mounted
+## unit more and a flier less than it costs infantry.
+func _refresh_astar_for(mover_team: int, movement_type: int) -> void:
 	for pos in _tiles:
 		var terrain: TerrainData = _tiles[pos]["terrain"]
 		var occupant: Unit = _tiles[pos]["occupant"]
 		var blocked_by_unit := occupant != null and occupant.unit_data.team != mover_team
 		_astar.set_point_solid(pos, terrain.impassable or blocked_by_unit)
+		_astar.set_point_weight_scale(pos, maxf(1.0, float(terrain.get_move_cost(movement_type))))
 
 ## Dijkstra flood-fill of tiles reachable within `move_points`, respecting
-## per-tile move_cost and blocking by the opposing team. Returns
-## Dictionary[Vector2i, int] mapping reachable tile -> movement cost spent.
-func compute_move_range(start: Vector2i, move_points: int, mover_team: int) -> Dictionary:
+## per-tile move cost (by movement type) and blocking by the opposing team.
+## Returns Dictionary[Vector2i, int] mapping reachable tile -> cost spent.
+func compute_move_range(start: Vector2i, move_points: int, mover_team: int, movement_type: int = ClassData.MovementType.INFANTRY) -> Dictionary:
 	var costs := {start: 0}
 	var frontier: Array[Vector2i] = [start]
 	while not frontier.is_empty():
@@ -112,7 +114,7 @@ func compute_move_range(start: Vector2i, move_points: int, mover_team: int) -> D
 			var occupant: Unit = _tiles[neighbor]["occupant"]
 			if occupant != null and occupant.unit_data.team != mover_team and neighbor != start:
 				continue  # can't move through/onto an enemy-occupied tile
-			var new_cost := current_cost + terrain.move_cost
+			var new_cost := current_cost + terrain.get_move_cost(movement_type)
 			if new_cost > move_points:
 				continue
 			if not costs.has(neighbor) or new_cost < costs[neighbor]:
@@ -129,9 +131,10 @@ func compute_move_range(start: Vector2i, move_points: int, mover_team: int) -> D
 	return result
 
 ## Returns the tile path (native AStarGrid2D, no homemade pathfinding) from
-## `start` to `end`, treating opposing-team-occupied tiles as solid.
-func find_path(start: Vector2i, end: Vector2i, mover_team: int) -> Array[Vector2i]:
-	_refresh_solids_for_team(mover_team)
+## `start` to `end`, treating opposing-team-occupied tiles as solid and
+## weighting by `movement_type`.
+func find_path(start: Vector2i, end: Vector2i, mover_team: int, movement_type: int = ClassData.MovementType.INFANTRY) -> Array[Vector2i]:
+	_refresh_astar_for(mover_team, movement_type)
 	var path := _astar.get_id_path(start, end)
 	var result: Array[Vector2i] = []
 	for p in path:

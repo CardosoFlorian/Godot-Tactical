@@ -8,6 +8,7 @@ extends CanvasLayer
 
 signal attack_pressed
 signal wait_pressed
+signal promote_pressed
 signal end_turn_pressed
 
 @onready var turn_banner: Label = $TurnBanner
@@ -21,6 +22,7 @@ func _ready() -> void:
 	action_menu.hide()
 	action_menu.attack_pressed.connect(func(): attack_pressed.emit())
 	action_menu.wait_pressed.connect(func(): wait_pressed.emit())
+	action_menu.promote_pressed.connect(func(): promote_pressed.emit())
 	end_turn_button.pressed.connect(func(): end_turn_pressed.emit())
 	SignalBus.player_phase_started.connect(func(): turn_banner.text = "Phase Joueur")
 	SignalBus.enemy_phase_started.connect(func(): turn_banner.text = "Phase Ennemie")
@@ -36,8 +38,9 @@ func show_hover_unit(unit_data: UnitData) -> void:
 func hide_hover_unit() -> void:
 	hover_info_panel.hide_panel()
 
-func show_action_menu(_unit, can_attack: bool) -> void:
+func show_action_menu(_unit, can_attack: bool, can_promote: bool = false) -> void:
 	action_menu.set_attack_enabled(can_attack)
+	action_menu.set_promote_visible(can_promote)
 	action_menu.show()
 
 func hide_action_menu() -> void:

@@ -10,3 +10,5 @@ impassable = false
 defense_bonus = 1
 avoid_bonus = 15
 atlas_coords = Vector2i(1, 0)
+mounted_move_cost = 4
+flying_move_cost = 1

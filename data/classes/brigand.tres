@@ -1,10 +1,12 @@
-[gd_resource type="Resource" script_class="ClassData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ClassData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://resources/defs/class_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/classes/guerrier.tres" id="2"]
 
 [resource]
 script = ExtResource("1")
-display_name = "Guerrier"
+display_name = "Brigand"
+movement_type = 0
 base_hp = 24
 base_str = 8
 base_skl = 4
@@ -13,6 +15,7 @@ base_lck = 3
 base_def = 6
 base_res = 2
 base_mov = 5
+base_con = 10
 growth_hp = 80
 growth_str = 50
 growth_skl = 30
@@ -21,3 +24,5 @@ growth_lck = 20
 growth_def = 30
 growth_res = 10
 usable_weapon_types = Array[int]([2])
+promoted_class = ExtResource("2")
+promotion_level = 10

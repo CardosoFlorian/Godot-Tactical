@@ -12,7 +12,7 @@ const KILL_BONUS := 30.0
 
 static func take_turn(unit: Unit, battle: Battle) -> void:
 	var data := unit.unit_data
-	var reachable: Dictionary = battle.grid.compute_move_range(unit.grid_pos, data.get_mov(), data.team)
+	var reachable: Dictionary = battle.grid.compute_move_range(unit.grid_pos, data.get_mov(), data.team, data.get_movement_type())
 
 	var best_tile: Vector2i = unit.grid_pos
 	var best_target: Unit = null
@@ -52,7 +52,7 @@ static func _move_unit(unit: Unit, battle: Battle, target_tile: Vector2i) -> voi
 	if target_tile == unit.grid_pos:
 		return
 	var old_pos := unit.grid_pos
-	var path := battle.grid.find_path(old_pos, target_tile, unit.unit_data.team)
+	var path := battle.grid.find_path(old_pos, target_tile, unit.unit_data.team, unit.unit_data.get_movement_type())
 	battle.grid.clear_occupant(old_pos)
 	if path.size() > 1:
 		await unit.move_along_path(path, battle.grid)

@@ -1,10 +1,12 @@
-[gd_resource type="Resource" script_class="ClassData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ClassData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://resources/defs/class_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/classes/paladin.tres" id="2"]
 
 [resource]
 script = ExtResource("1")
-display_name = "Lancier"
+display_name = "Cavalier"
+movement_type = 1
 base_hp = 22
 base_str = 7
 base_skl = 5
@@ -12,7 +14,8 @@ base_spd = 6
 base_lck = 4
 base_def = 7
 base_res = 3
-base_mov = 5
+base_mov = 7
+base_con = 9
 growth_hp = 75
 growth_str = 40
 growth_skl = 35
@@ -21,3 +24,5 @@ growth_lck = 25
 growth_def = 35
 growth_res = 15
 usable_weapon_types = Array[int]([1])
+promoted_class = ExtResource("2")
+promotion_level = 10

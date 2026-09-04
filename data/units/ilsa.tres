@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://resources/defs/unit_data.gd" id="1"]
-[ext_resource type="Resource" path="res://data/classes/lancer.tres" id="2"]
+[ext_resource type="Resource" path="res://data/classes/cavalier.tres" id="2"]
 [ext_resource type="Resource" path="res://data/weapons/iron_lance.tres" id="3"]
 [ext_resource type="Texture2D" path="res://assets/placeholder/units/enemy_lance.png" id="4"]
 [ext_resource type="Texture2D" path="res://assets/placeholder/portraits/ilsa.png" id="5"]

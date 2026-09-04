@@ -15,13 +15,27 @@ static func _triangle_mods(attacker: UnitData, defender: UnitData) -> Dictionary
 		return {"hit": 0, "might": 0}
 	return WeaponTriangle.get_modifiers(atk_weapon.weapon_type, def_weapon.weapon_type)
 
+static func _is_magic(weapon: WeaponData) -> bool:
+	return weapon != null and weapon.weapon_type == WeaponData.WeaponType.TOME
+
+## A unit's own Speed, reduced if its own equipped weapon is heavier than
+## its Constitution can carry (classic GBA Fire Emblem AS formula). Used for
+## both doubling and avoid — a unit weighed down by its weapon is easier to
+## hit as well as slower to strike twice.
+static func get_effective_spd(unit: UnitData) -> int:
+	var weapon := unit.get_equipped_weapon()
+	if weapon == null:
+		return unit.get_spd()
+	var penalty := maxi(0, weapon.weight - unit.get_con())
+	return maxi(0, unit.get_spd() - penalty)
+
 static func get_hit_chance(attacker: UnitData, defender: UnitData, terrain_avoid_bonus: int = 0) -> int:
 	var weapon := attacker.get_equipped_weapon()
 	if weapon == null:
 		return 0
 	var mods := _triangle_mods(attacker, defender)
 	var attack_hit := weapon.hit + attacker.get_skl() * 2 + attacker.get_lck() / 2 + int(mods["hit"])
-	var avoid := defender.get_spd() * 2 + defender.get_lck() + terrain_avoid_bonus
+	var avoid := get_effective_spd(defender) * 2 + defender.get_lck() + terrain_avoid_bonus
 	return clampi(attack_hit - avoid, 0, 100)
 
 static func get_crit_chance(attacker: UnitData, defender: UnitData) -> int:
@@ -31,17 +45,25 @@ static func get_crit_chance(attacker: UnitData, defender: UnitData) -> int:
 	var crit := weapon.crit + attacker.get_skl() / 2 - defender.get_lck()
 	return clampi(crit, 0, 100)
 
+## Magic weapons deal damage from Mag against Res instead of Str against
+## Def, and sit outside the physical weapon triangle entirely (Tome/Bow
+## already return {0,0} from _triangle_mods since the triangle only knows
+## Sword/Lance/Axe).
 static func get_damage(attacker: UnitData, defender: UnitData, terrain_def_bonus: int = 0) -> int:
 	var weapon := attacker.get_equipped_weapon()
 	if weapon == null:
 		return 0
+	if _is_magic(weapon):
+		var magic_power := attacker.get_mag() + weapon.might
+		var resistance := defender.get_res() + terrain_def_bonus
+		return maxi(0, magic_power - resistance)
 	var mods := _triangle_mods(attacker, defender)
 	var attack_power := attacker.get_str() + weapon.might + int(mods["might"])
 	var defense := defender.get_def() + terrain_def_bonus
 	return maxi(0, attack_power - defense)
 
 static func can_double(attacker: UnitData, defender: UnitData) -> bool:
-	return attacker.get_spd() >= defender.get_spd() + DOUBLE_ATTACK_SPD_THRESHOLD
+	return get_effective_spd(attacker) >= get_effective_spd(defender) + DOUBLE_ATTACK_SPD_THRESHOLD
 
 static func is_in_weapon_range(distance: int, weapon: WeaponData) -> bool:
 	if weapon == null:
