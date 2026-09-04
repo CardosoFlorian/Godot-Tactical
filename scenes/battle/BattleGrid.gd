@@ -10,11 +10,19 @@ const CELL_SIZE := Vector2i(32, 32)
 const DIRECTIONS: Array[Vector2i] = [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
 
 @onready var terrain_layer: TileMapLayer = $TerrainLayer
+@onready var decoration_layer: TileMapLayer = $DecorationLayer
 @onready var highlight_layer: TileMapLayer = $HighlightLayer
 
 ## Highlight tile atlas coords in the highlight TileSet.
 const HIGHLIGHT_MOVE := Vector2i(0, 0)
 const HIGHLIGHT_ATTACK := Vector2i(1, 0)
+
+## Ground tile atlas coords in the terrain TileSet (always painted on
+## terrain_layer, everywhere). Anything else (tree, wall...) goes on
+## decoration_layer instead, since those source tiles are transparent
+## around the decoration and are meant to sit on top of ground, not replace
+## it — see TerrainData.atlas_coords doc.
+const GROUND_ATLAS_COORDS := Vector2i(0, 0)
 
 var _size: Vector2i = Vector2i.ZERO
 var _tiles: Dictionary = {}  # Vector2i -> {"terrain": TerrainData, "occupant": Unit}
@@ -23,12 +31,16 @@ var _astar := AStarGrid2D.new()
 func setup(size: Vector2i, terrain_map: Dictionary, default_terrain: TerrainData) -> void:
 	_size = size
 	_tiles.clear()
+	terrain_layer.clear()
+	decoration_layer.clear()
 	for y in size.y:
 		for x in size.x:
 			var pos := Vector2i(x, y)
 			var terrain: TerrainData = terrain_map.get(pos, default_terrain)
 			_tiles[pos] = {"terrain": terrain, "occupant": null}
-			terrain_layer.set_cell(pos, 0, terrain.atlas_coords)
+			terrain_layer.set_cell(pos, 0, GROUND_ATLAS_COORDS)
+			if terrain.atlas_coords != GROUND_ATLAS_COORDS:
+				decoration_layer.set_cell(pos, 0, terrain.atlas_coords)
 	_astar.region = Rect2i(Vector2i.ZERO, size)
 	_astar.cell_size = Vector2(CELL_SIZE)
 	_astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER

@@ -43,9 +43,11 @@ func move_along_path(path: Array[Vector2i], grid: BattleGrid) -> void:
 	if path.is_empty():
 		return
 	var tween := create_tween()
+	var previous_pos := position
 	for step in path:
 		var world_pos := grid.grid_to_world(step)
-		var dist := position.distance_to(world_pos)
+		var dist := previous_pos.distance_to(world_pos)
 		tween.tween_property(self, "position", world_pos, dist / MOVE_SPEED)
+		previous_pos = world_pos
 	grid_pos = path[-1]
 	await tween.finished

@@ -7,11 +7,10 @@ var valid_targets: Array[Unit] = []
 
 func enter(_previous_state_name: String = "") -> void:
 	valid_targets = battle.get_attackable_targets(battle.selected_unit)
-	var tiles: Array[Vector2i] = []
-	for target in valid_targets:
-		tiles.append(target.grid_pos)
+	var weapon := battle.selected_unit.unit_data.get_equipped_weapon()
+	var range_tiles := battle.grid.get_tiles_in_range(battle.selected_unit.grid_pos, weapon.min_range, weapon.max_range)
 	battle.grid.clear_highlight()
-	battle.grid.show_highlight(tiles, battle.grid.HIGHLIGHT_ATTACK)
+	battle.grid.show_highlight(range_tiles, battle.grid.HIGHLIGHT_ATTACK)
 	SignalBus.targeting_started.emit("attack", valid_targets)
 
 func exit() -> void:

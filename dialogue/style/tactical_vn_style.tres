@@ -1,0 +1,82 @@
+[gd_resource type="Resource" script_class="DialogicStyle" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://addons/dialogic/Resources/dialogic_style.gd" id="1"]
+[ext_resource type="Script" path="res://addons/dialogic/Resources/dialogic_style_layer.gd" id="2"]
+[ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_FullBackground/full_background_layer.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_VN_Portraits/vn_portrait_layer.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_VN_Textbox/vn_textbox_layer.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_Input/full_advance_input_layer.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_Glossary/glossary_popup_layer.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_VN_Choices/vn_choice_layer.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_TextInput/text_input_layer.tscn" id="9"]
+[ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_History/history_layer.tscn" id="10"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2")
+overrides = {}
+
+[sub_resource type="Resource" id="2"]
+script = ExtResource("2")
+scene = ExtResource("3")
+overrides = {}
+
+[sub_resource type="Resource" id="3"]
+script = ExtResource("2")
+scene = ExtResource("4")
+overrides = {}
+
+[sub_resource type="Resource" id="4"]
+script = ExtResource("2")
+scene = ExtResource("6")
+overrides = {}
+
+[sub_resource type="Resource" id="5"]
+script = ExtResource("2")
+scene = ExtResource("5")
+overrides = {
+"box_panel": "res://assets/ui/textbox_style.tres",
+"box_color_use_global": "false",
+"box_color_custom": "Color(1, 1, 1, 1)",
+"name_label_box_panel": "res://assets/ui/name_label_style.tres",
+"name_label_box_use_global_color": "false",
+"name_label_box_modulate": "Color(1, 1, 1, 1)"
+}
+
+[sub_resource type="Resource" id="6"]
+script = ExtResource("2")
+scene = ExtResource("7")
+overrides = {}
+
+[sub_resource type="Resource" id="7"]
+script = ExtResource("2")
+scene = ExtResource("8")
+overrides = {}
+
+[sub_resource type="Resource" id="8"]
+script = ExtResource("2")
+scene = ExtResource("9")
+overrides = {}
+
+[sub_resource type="Resource" id="9"]
+script = ExtResource("2")
+scene = ExtResource("10")
+overrides = {}
+
+[resource]
+script = ExtResource("1")
+name = "Tactical RPG Style"
+layer_list = Array[String](["10", "11", "12", "13", "14", "15", "16", "17"])
+layer_info = {
+"": SubResource("1"),
+"10": SubResource("2"),
+"11": SubResource("3"),
+"12": SubResource("4"),
+"13": SubResource("5"),
+"14": SubResource("6"),
+"15": SubResource("7"),
+"16": SubResource("8"),
+"17": SubResource("9")
+}
+base_overrides = {}
+layers = Array[ExtResource("2")]([])
+metadata/_latest_layer = "17"

@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://capf2y61dpxkj"]
 
-[ext_resource type="Script" path="res://scenes/main/Main.gd" id="1"]
+[ext_resource type="Script" uid="uid://wt24yhn7urdl" path="res://scenes/main/Main.gd" id="1"]
 
-[node name="Main" type="Control"]
+[node name="Main" type="Control" unique_id=1667045026]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,7 +11,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=283390971]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -19,21 +19,21 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="CenterContainer"]
+[node name="VBox" type="VBoxContainer" parent="CenterContainer" unique_id=2028276708]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Title" type="Label" parent="CenterContainer/VBox"]
+[node name="Title" type="Label" parent="CenterContainer/VBox" unique_id=93939270]
 layout_mode = 2
 theme_override_font_sizes/font_size = 36
-horizontal_alignment = 1
 text = "Tactical RPG"
+horizontal_alignment = 1
 
-[node name="StartButton" type="Button" parent="CenterContainer/VBox"]
+[node name="StartButton" type="Button" parent="CenterContainer/VBox" unique_id=1399453731]
 layout_mode = 2
 text = "Commencer"
 
-[node name="PermadeathCheck" type="CheckBox" parent="CenterContainer/VBox"]
+[node name="PermadeathCheck" type="CheckBox" parent="CenterContainer/VBox" unique_id=108904134]
 layout_mode = 2
 button_pressed = true
 text = "Permadeath actif"
