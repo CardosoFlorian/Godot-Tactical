@@ -20,6 +20,8 @@ var move_range: Dictionary = {}
 var current_phase: int = UnitData.Team.PLAYER
 var rng := RandomNumberGenerator.new()
 
+var _hovered_unit: Unit = null
+
 func _ready() -> void:
 	rng.randomize()
 	ui.attack_pressed.connect(func(): state_machine.handle_action_chosen("attack"))
@@ -29,6 +31,48 @@ func _ready() -> void:
 	if map_data:
 		_build_battle(map_data)
 	state_machine.start("start_turn")
+
+## Hovering a unit while idle (unit_select) previews its HP and everything
+## it threatens this turn (move range in blue, attack range in red).
+## Deliberately does nothing outside unit_select so it never fights the
+## active state for control of the highlight layer.
+func _process(_delta: float) -> void:
+	if state_machine.current_state_name != "unit_select":
+		if _hovered_unit:
+			ui.hide_hover_unit()
+			_hovered_unit = null
+		return
+
+	var local_pos: Vector2 = grid.to_local(get_global_mouse_position())
+	var pos := grid.world_to_grid(local_pos)
+	var occupant: Unit = grid.get_occupant(pos) if grid.is_in_bounds(pos) else null
+	if occupant == _hovered_unit:
+		return
+
+	if _hovered_unit:
+		ui.hide_hover_unit()
+		grid.clear_highlight()
+	_hovered_unit = occupant
+	if occupant:
+		ui.show_hover_unit(occupant.unit_data)
+		_show_threat_range(occupant)
+
+func _show_threat_range(unit: Unit) -> void:
+	var reachable: Dictionary = grid.compute_move_range(unit.grid_pos, unit.unit_data.get_mov(), unit.unit_data.team)
+	var move_tiles: Array[Vector2i] = []
+	move_tiles.assign(reachable.keys())
+	grid.show_highlight(move_tiles, grid.HIGHLIGHT_MOVE)
+
+	var weapon := unit.unit_data.get_equipped_weapon()
+	if weapon == null:
+		return
+	var attack_tiles := {}
+	for tile in reachable:
+		for t in grid.get_tiles_in_range(tile, weapon.min_range, weapon.max_range):
+			attack_tiles[t] = true
+	var attack_list: Array[Vector2i] = []
+	attack_list.assign(attack_tiles.keys())
+	grid.show_highlight(attack_list, grid.HIGHLIGHT_ATTACK)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -110,6 +154,21 @@ func get_attackable_targets_from(from_pos: Vector2i, unit: Unit) -> Array[Unit]:
 
 func has_attackable_target(unit: Unit) -> bool:
 	return not get_attackable_targets(unit).is_empty()
+
+## Resolves a full attack (distance, terrain bonuses, RNG, HP application,
+## death handling) between two units already in position. Shared by manual
+## targeting (TargetingState) and click-to-attack (MoveState moving a unit
+## into range and immediately striking).
+func execute_attack(attacker: Unit, defender: Unit) -> void:
+	var distance := absi(attacker.grid_pos.x - defender.grid_pos.x) + absi(attacker.grid_pos.y - defender.grid_pos.y)
+	var attacker_terrain := grid.get_terrain_combat_bonus(attacker.grid_pos)
+	var defender_terrain := grid.get_terrain_combat_bonus(defender.grid_pos)
+	SignalBus.combat_started.emit(attacker, defender)
+	var result := CombatResolver.resolve_combat(attacker.unit_data, defender.unit_data, distance, rng, attacker_terrain, defender_terrain)
+	SignalBus.combat_resolved.emit(result)
+	apply_combat_aftermath(attacker, defender)
+	if is_instance_valid(attacker):
+		attacker.has_acted = true
 
 func apply_combat_aftermath(attacker: Unit, target: Unit) -> void:
 	_handle_death_if_needed(attacker)

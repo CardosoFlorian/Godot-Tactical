@@ -12,10 +12,12 @@ signal end_turn_pressed
 
 @onready var turn_banner: Label = $TurnBanner
 @onready var unit_info_panel: UnitInfoPanel = $UnitInfoPanel
+@onready var hover_info_panel: UnitInfoPanel = $HoverInfoPanel
 @onready var action_menu: ActionMenu = $ActionMenu
 @onready var end_turn_button: Button = $EndTurnButton
 
 func _ready() -> void:
+	hover_info_panel.hide_panel()
 	action_menu.hide()
 	action_menu.attack_pressed.connect(func(): attack_pressed.emit())
 	action_menu.wait_pressed.connect(func(): wait_pressed.emit())
@@ -27,6 +29,12 @@ func _ready() -> void:
 
 func _on_unit_selected(unit) -> void:
 	unit_info_panel.show_unit(unit.unit_data)
+
+func show_hover_unit(unit_data: UnitData) -> void:
+	hover_info_panel.show_unit(unit_data)
+
+func hide_hover_unit() -> void:
+	hover_info_panel.hide_panel()
 
 func show_action_menu(_unit, can_attack: bool) -> void:
 	action_menu.set_attack_enabled(can_attack)

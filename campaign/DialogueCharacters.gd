@@ -21,13 +21,18 @@ extends RefCounted
 const PORTRAIT_DIR := "res://assets/placeholder/portraits/"
 
 const ROSTER := [
-	{"id": "Aria", "portrait": "aria.png", "color": Color(0.95, 0.78, 0.35)},
-	{"id": "Doran", "portrait": "doran.png", "color": Color(0.45, 0.75, 0.95)},
-	{"id": "Kessa", "portrait": "kessa.png", "color": Color(0.4, 0.85, 0.65)},
-	{"id": "Vex", "portrait": "vex.png", "color": Color(0.9, 0.35, 0.35)},
-	{"id": "Rurik", "portrait": "rurik.png", "color": Color(0.9, 0.55, 0.25)},
-	{"id": "Ilsa", "portrait": "ilsa.png", "color": Color(0.75, 0.55, 0.95)},
+	{"id": "Aria", "portrait": "aria.png"},
+	{"id": "Doran", "portrait": "doran.png"},
+	{"id": "Kessa", "portrait": "kessa.png"},
+	{"id": "Vex", "portrait": "vex.png"},
+	{"id": "Rurik", "portrait": "rurik.png"},
+	{"id": "Ilsa", "portrait": "ilsa.png"},
 ]
+
+## All names render in black now that the name label has its own readable
+## panel behind it (Kenney ui-pack-pixel-adventure), rather than one color
+## per character.
+const NAME_COLOR := Color(0, 0, 0, 1)
 
 static var _registered := false
 
@@ -38,7 +43,7 @@ static func register_all() -> void:
 	for entry in ROSTER:
 		var character := DialogicCharacter.new()
 		character.display_name = entry["id"]
-		character.color = entry["color"]
+		character.color = NAME_COLOR
 		character.add_portrait("default", PORTRAIT_DIR + entry["portrait"])
 		character.default_portrait = "default"
 		directory[entry["id"]] = character

@@ -21,15 +21,7 @@ func handle_unit_clicked(unit: Unit) -> void:
 		return
 	var attacker := battle.selected_unit
 	SignalBus.target_selected.emit(unit)
-	SignalBus.combat_started.emit(attacker, unit)
-	var distance := absi(attacker.grid_pos.x - unit.grid_pos.x) + absi(attacker.grid_pos.y - unit.grid_pos.y)
-	var attacker_terrain := battle.grid.get_terrain_combat_bonus(attacker.grid_pos)
-	var defender_terrain := battle.grid.get_terrain_combat_bonus(unit.grid_pos)
-	var result := CombatResolver.resolve_combat(attacker.unit_data, unit.unit_data, distance, battle.rng, attacker_terrain, defender_terrain)
-	SignalBus.combat_resolved.emit(result)
-	battle.apply_combat_aftermath(attacker, unit)
-	if is_instance_valid(attacker):
-		attacker.has_acted = true
+	battle.execute_attack(attacker, unit)
 	if battle.check_battle_end():
 		state_machine.change_state("game_over")
 	else:
