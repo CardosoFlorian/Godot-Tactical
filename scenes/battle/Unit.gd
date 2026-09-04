@@ -10,7 +10,10 @@ const MOVE_SPEED := 220.0  # pixels/sec along the confirmed path
 
 var grid_pos: Vector2i = Vector2i.ZERO
 var has_moved: bool = false
-var has_acted: bool = false
+var has_acted: bool = false:
+	set(value):
+		has_acted = value
+		_refresh_sprite()
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var selection_ring: Node2D = $SelectionRing
@@ -25,12 +28,15 @@ func setup(data: UnitData, start_pos: Vector2i, grid: BattleGrid) -> void:
 	position = grid.grid_to_world(start_pos)
 	_refresh_sprite()
 
+## Acted units are visibly dimmed so it's never ambiguous whether they can
+## still be given an order this turn.
 func _refresh_sprite() -> void:
 	if not is_inside_tree() or unit_data == null:
 		return
 	if unit_data.battle_sprite:
 		sprite.texture = unit_data.battle_sprite
-	sprite.modulate = Color.WHITE if unit_data.team == UnitData.Team.PLAYER else Color(1.0, 0.75, 0.75)
+	var team_tint := Color.WHITE if unit_data.team == UnitData.Team.PLAYER else Color(1.0, 0.75, 0.75)
+	sprite.modulate = team_tint.darkened(0.55) if has_acted else team_tint
 
 func set_selected(selected: bool) -> void:
 	selection_ring.visible = selected

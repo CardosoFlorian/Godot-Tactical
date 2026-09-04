@@ -15,6 +15,10 @@ func enter(_previous_state_name: String = "") -> void:
 	battle.grid.clear_highlight()
 	battle.show_unit_range(unit, battle.move_range)
 	SignalBus.move_range_shown.emit(battle.move_range)
+	battle.ui.show_cancel_move()
+
+func exit() -> void:
+	battle.ui.hide_cancel_move()
 
 func handle_tile_clicked(pos: Vector2i) -> void:
 	if not battle.move_range.has(pos):

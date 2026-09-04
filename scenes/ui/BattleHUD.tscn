@@ -21,8 +21,15 @@ text = "Phase Joueur"
 [node name="HoverInfoPanel" parent="." instance=ExtResource("2")]
 
 [node name="ActionMenu" parent="." instance=ExtResource("3")]
-offset_top = 216.0
-offset_bottom = 340.0
+offset_top = 288.0
+offset_bottom = 412.0
+
+[node name="CancelMoveButton" type="Button" parent="."]
+offset_left = 8.0
+offset_top = 288.0
+offset_right = 148.0
+offset_bottom = 320.0
+text = "Annuler"
 
 [node name="EndTurnButton" type="Button" parent="."]
 anchors_preset = 3
