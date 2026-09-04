@@ -27,14 +27,14 @@ func show_unit(unit_data: UnitData) -> void:
 	hp_bar.value = unit_data.get_current_hp()
 	hp_label.text = "%d / %d" % [unit_data.get_current_hp(), unit_data.get_max_hp()]
 
-	stat_str.text = "For %d" % unit_data.get_str()
-	stat_mag.text = "Mag %d" % unit_data.get_mag()
-	stat_skl.text = "Adr %d" % unit_data.get_skl()
-	stat_spd.text = "Vit %d" % unit_data.get_spd()
-	stat_lck.text = "Chn %d" % unit_data.get_lck()
-	stat_def.text = "Def %d" % unit_data.get_def()
-	stat_res.text = "Res %d" % unit_data.get_res()
-	stat_con.text = "Con %d" % unit_data.get_con()
+	stat_str.text = "Force %d" % unit_data.get_str()
+	stat_mag.text = "Magie %d" % unit_data.get_mag()
+	stat_skl.text = "Adresse %d" % unit_data.get_skl()
+	stat_spd.text = "Vitesse %d" % unit_data.get_spd()
+	stat_def.text = "Defense %d" % unit_data.get_def()
+	stat_res.text = "Resist. %d" % unit_data.get_res()
+	stat_lck.text = "Chance %d" % unit_data.get_lck()
+	stat_con.text = "Constit. %d" % unit_data.get_con()
 	stat_mov.text = "Mouv %d" % unit_data.get_mov()
 
 	var weapon := unit_data.get_equipped_weapon()

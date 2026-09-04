@@ -7,8 +7,8 @@
 anchors_preset = 0
 offset_left = 8.0
 offset_top = 8.0
-offset_right = 236.0
-offset_bottom = 268.0
+offset_right = 300.0
+offset_bottom = 280.0
 theme_override_styles/panel = ExtResource("2")
 script = ExtResource("1")
 
@@ -18,11 +18,12 @@ theme_override_constants/separation = 8
 
 [node name="NameLabel" type="Label" parent="VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 text = "Unit"
 
 [node name="ClassLabel" type="Label" parent="VBox"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 16
 text = "Classe Niv.1"
 
 [node name="HPBar" type="ProgressBar" parent="VBox"]
@@ -48,45 +49,55 @@ columns = 2
 
 [node name="StatStr" type="Label" parent="VBox/StatGrid"]
 layout_mode = 2
-text = "For 0"
+theme_override_font_sizes/font_size = 16
+text = "Force 0"
 
 [node name="StatMag" type="Label" parent="VBox/StatGrid"]
 layout_mode = 2
-text = "Mag 0"
+theme_override_font_sizes/font_size = 16
+text = "Magie 0"
 
 [node name="StatSkl" type="Label" parent="VBox/StatGrid"]
 layout_mode = 2
-text = "Adr 0"
+theme_override_font_sizes/font_size = 16
+text = "Adresse 0"
 
 [node name="StatSpd" type="Label" parent="VBox/StatGrid"]
 layout_mode = 2
-text = "Vit 0"
-
-[node name="StatLck" type="Label" parent="VBox/StatGrid"]
-layout_mode = 2
-text = "Chn 0"
+theme_override_font_sizes/font_size = 16
+text = "Vitesse 0"
 
 [node name="StatDef" type="Label" parent="VBox/StatGrid"]
 layout_mode = 2
-text = "Def 0"
+theme_override_font_sizes/font_size = 16
+text = "Defense 0"
 
 [node name="StatRes" type="Label" parent="VBox/StatGrid"]
 layout_mode = 2
-text = "Res 0"
+theme_override_font_sizes/font_size = 16
+text = "Resist. 0"
+
+[node name="StatLck" type="Label" parent="VBox/StatGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Chance 0"
 
 [node name="StatCon" type="Label" parent="VBox/StatGrid"]
 layout_mode = 2
-text = "Con 0"
+theme_override_font_sizes/font_size = 16
+text = "Constit. 0"
 
 [node name="MovWeaponRow" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
 [node name="StatMov" type="Label" parent="VBox/MovWeaponRow"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 16
 text = "Mouv 0"
 
 [node name="WeaponLabel" type="Label" parent="VBox/MovWeaponRow"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 16
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "-"
