@@ -22,14 +22,7 @@ text = "Phase Joueur"
 
 [node name="ActionMenu" parent="." instance=ExtResource("3")]
 offset_top = 288.0
-offset_bottom = 412.0
-
-[node name="CancelMoveButton" type="Button" parent="."]
-offset_left = 8.0
-offset_top = 288.0
-offset_right = 148.0
-offset_bottom = 320.0
-text = "Annuler"
+offset_bottom = 448.0
 
 [node name="EndTurnButton" type="Button" parent="."]
 anchors_preset = 3

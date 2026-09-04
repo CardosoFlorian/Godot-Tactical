@@ -27,7 +27,7 @@ func _ready() -> void:
 	ui.attack_pressed.connect(func(): state_machine.handle_action_chosen("attack"))
 	ui.wait_pressed.connect(func(): state_machine.handle_action_chosen("wait"))
 	ui.promote_pressed.connect(func(): state_machine.handle_action_chosen("promote"))
-	ui.cancel_move_pressed.connect(func(): state_machine.handle_cancel())
+	ui.cancel_pressed.connect(func(): state_machine.handle_cancel())
 	ui.end_turn_pressed.connect(_on_end_turn_pressed)
 	state_machine.setup(self)
 	if map_data:
