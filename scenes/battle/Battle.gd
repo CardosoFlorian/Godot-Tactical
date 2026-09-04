@@ -55,13 +55,17 @@ func _process(_delta: float) -> void:
 	_hovered_unit = occupant
 	if occupant:
 		ui.show_hover_unit(occupant.unit_data)
-		_show_threat_range(occupant)
+		var reachable := grid.compute_move_range(occupant.grid_pos, occupant.unit_data.get_mov(), occupant.unit_data.team)
+		show_unit_range(occupant, reachable)
 
 ## Move range in blue is the base; attack range is only drawn red on the
 ## tiles it adds BEYOND the move range (the "can't stand here but could
 ## still get hit" ring), so tiles you can actually walk onto stay blue.
-func _show_threat_range(unit: Unit) -> void:
-	var reachable: Dictionary = grid.compute_move_range(unit.grid_pos, unit.unit_data.get_mov(), unit.unit_data.team)
+## Tiles occupied by one of `unit`'s own teammates are excluded from that
+## red ring entirely, since it could never attack them. Used both for the
+## idle hover preview and for the selected unit's own MoveState display, so
+## the attack ring doesn't disappear the moment you actually pick a unit.
+func show_unit_range(unit: Unit, reachable: Dictionary) -> void:
 	var move_tiles: Array[Vector2i] = []
 	move_tiles.assign(reachable.keys())
 	grid.show_highlight(move_tiles, grid.HIGHLIGHT_MOVE)
@@ -72,8 +76,12 @@ func _show_threat_range(unit: Unit) -> void:
 	var attack_only_tiles := {}
 	for tile in reachable:
 		for t in grid.get_tiles_in_range(tile, weapon.min_range, weapon.max_range):
-			if not reachable.has(t):
-				attack_only_tiles[t] = true
+			if reachable.has(t):
+				continue
+			var occupant := grid.get_occupant(t)
+			if occupant and occupant.unit_data.team == unit.unit_data.team:
+				continue
+			attack_only_tiles[t] = true
 	var attack_list: Array[Vector2i] = []
 	attack_list.assign(attack_only_tiles.keys())
 	grid.show_highlight(attack_list, grid.HIGHLIGHT_ATTACK)

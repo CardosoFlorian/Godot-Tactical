@@ -13,9 +13,7 @@ func enter(_previous_state_name: String = "") -> void:
 	var unit := battle.selected_unit
 	battle.move_range = battle.grid.compute_move_range(unit.grid_pos, unit.unit_data.get_mov(), unit.unit_data.team)
 	battle.grid.clear_highlight()
-	var tiles: Array[Vector2i] = []
-	tiles.assign(battle.move_range.keys())
-	battle.grid.show_highlight(tiles, battle.grid.HIGHLIGHT_MOVE)
+	battle.show_unit_range(unit, battle.move_range)
 	SignalBus.move_range_shown.emit(battle.move_range)
 
 func handle_tile_clicked(pos: Vector2i) -> void:
