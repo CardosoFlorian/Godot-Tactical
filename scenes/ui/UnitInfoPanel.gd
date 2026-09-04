@@ -29,7 +29,7 @@ func show_unit(unit_data: UnitData) -> void:
 
 	stat_str.text = "Force %d" % unit_data.get_str()
 	stat_mag.text = "Magie %d" % unit_data.get_mag()
-	stat_skl.text = "Adresse %d" % unit_data.get_skl()
+	stat_skl.text = "Technique %d" % unit_data.get_skl()
 	stat_spd.text = "Vitesse %d" % unit_data.get_spd()
 	stat_def.text = "Defense %d" % unit_data.get_def()
 	stat_res.text = "Resist. %d" % unit_data.get_res()

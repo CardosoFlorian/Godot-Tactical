@@ -60,7 +60,7 @@ text = "Magie 0"
 [node name="StatSkl" type="Label" parent="VBox/StatGrid"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Adresse 0"
+text = "Technique 0"
 
 [node name="StatSpd" type="Label" parent="VBox/StatGrid"]
 layout_mode = 2
