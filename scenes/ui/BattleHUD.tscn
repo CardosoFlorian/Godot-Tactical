@@ -19,14 +19,6 @@ text = "Phase Joueur"
 [node name="UnitInfoPanel" parent="." instance=ExtResource("2")]
 
 [node name="HoverInfoPanel" parent="." instance=ExtResource("2")]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -228.0
-offset_top = 8.0
-offset_right = -16.0
-offset_bottom = 76.0
-grow_horizontal = 0
 
 [node name="ActionMenu" parent="." instance=ExtResource("3")]
 offset_top = 84.0

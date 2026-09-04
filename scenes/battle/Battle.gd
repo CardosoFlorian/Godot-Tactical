@@ -57,6 +57,9 @@ func _process(_delta: float) -> void:
 		ui.show_hover_unit(occupant.unit_data)
 		_show_threat_range(occupant)
 
+## Move range in blue is the base; attack range is only drawn red on the
+## tiles it adds BEYOND the move range (the "can't stand here but could
+## still get hit" ring), so tiles you can actually walk onto stay blue.
 func _show_threat_range(unit: Unit) -> void:
 	var reachable: Dictionary = grid.compute_move_range(unit.grid_pos, unit.unit_data.get_mov(), unit.unit_data.team)
 	var move_tiles: Array[Vector2i] = []
@@ -66,12 +69,13 @@ func _show_threat_range(unit: Unit) -> void:
 	var weapon := unit.unit_data.get_equipped_weapon()
 	if weapon == null:
 		return
-	var attack_tiles := {}
+	var attack_only_tiles := {}
 	for tile in reachable:
 		for t in grid.get_tiles_in_range(tile, weapon.min_range, weapon.max_range):
-			attack_tiles[t] = true
+			if not reachable.has(t):
+				attack_only_tiles[t] = true
 	var attack_list: Array[Vector2i] = []
-	attack_list.assign(attack_tiles.keys())
+	attack_list.assign(attack_only_tiles.keys())
 	grid.show_highlight(attack_list, grid.HIGHLIGHT_ATTACK)
 
 func _unhandled_input(event: InputEvent) -> void:
