@@ -9,7 +9,7 @@
 [resource]
 script = ExtResource("1")
 character_id = "skarn"
-display_name = "Skarn"
+display_name = "Chevalier pégase"
 character_class = ExtResource("2")
 level = 1
 team = 1

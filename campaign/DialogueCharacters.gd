@@ -23,15 +23,39 @@ const PORTRAIT_DIR := "res://assets/placeholder/portraits/"
 ## Everyone but Aurora still gets a single "default" portrait. Aurora has
 ## real expression art — see AURORA_PORTRAITS below — so she's built
 ## separately in register_all() instead of through this flat list.
+##
+## Only Aurora's 3 real companions get named Dialogic characters. Regular
+## enemies (Vex/Rurik/Ilsa/Skarn and future generic spawns) use class-based
+## display names ("Bandit", "Chevalier", ...) instead of a person's name and
+## never speak in dialogue, so they have no entry here — only named/boss
+## enemies would ever need one.
+##
+## Doran removed 2026-09-05: replaced by Lycith (see LYCITH_PORTRAITS below)
+## as one of Aurora's 3 companions in every timeline.
 const ROSTER := [
-	{"id": "Doran", "portrait": "doran.png"},
 	{"id": "Kessa", "portrait": "kessa.png"},
 	{"id": "Elyn", "portrait": "elyn.png"},
-	{"id": "Vex", "portrait": "vex.png"},
-	{"id": "Rurik", "portrait": "rurik.png"},
-	{"id": "Ilsa", "portrait": "ilsa.png"},
-	{"id": "Skarn", "portrait": "skarn.png"},
 ]
+
+## Lycith portrait name -> file, same AURORA_PORTRAITS pattern. Real art in
+## progress — only "neutral" exists so far; add "happy"/"sad"/"mad"/"shock"
+## here (as "lycith_happy.png" etc.) once they're generated.
+const LYCITH_PORTRAITS := {
+	"neutral": "lycith_neutral.png",
+}
+
+## Lycith joins at "left". A first pass gave her the same 256px slot Doran
+## used and scale 0.5 to fit it — which made her look half Aurora's HEIGHT,
+## absurd for "un peu plus petite qu'Aurora" (she should differ by a normal
+## human amount, not by half). Fixed at the layout level instead of by
+## shrinking her further: "left" is now 384px wide in
+## vn_portrait_layer_tactical.tscn (reclaimed from "center", which only
+## needs ~560px for Aurora's actual visible content despite her wider
+## canvas, and from "leftmost"). At scale 0.85 (720*0.85=612px tall, ~85%
+## of Aurora's height — a believable "a bit shorter"), her content renders
+## ~320px wide (her canvas content bbox is ~79% of a 1024-wide canvas),
+## comfortably inside the 384px slot without touching Aurora's or Kessa's.
+const LYCITH_PORTRAIT_SCALE := 0.85
 
 ## Portrait name -> file, for Aurora specifically. Pick one per line with
 ## Dialogic's "Name (portrait): text" syntax, e.g. "Aurora (mad): Kessa...".
@@ -107,6 +131,15 @@ static func register_all() -> void:
 		character.add_portrait("default", PORTRAIT_DIR + entry["portrait"])
 		character.default_portrait = "default"
 		directory[entry["id"]] = character
+
+	var lycith := DialogicCharacter.new()
+	lycith.display_name = "Lycith"
+	lycith.color = NAME_COLOR
+	lycith.scale = LYCITH_PORTRAIT_SCALE
+	for portrait_name in LYCITH_PORTRAITS:
+		lycith.add_portrait(portrait_name, PORTRAIT_DIR + LYCITH_PORTRAITS[portrait_name])
+	lycith.default_portrait = "neutral"
+	directory["Lycith"] = lycith
 
 	Engine.set_meta("dch_directory", directory)
 	_registered = true

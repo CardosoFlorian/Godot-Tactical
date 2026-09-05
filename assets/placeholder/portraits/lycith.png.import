@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dea58n3dmahoa"
-path="res://.godot/imported/doran.png-58d6ecc4bfc303cd3b6cfdf401e5b3b3.ctex"
+uid="uid://cv1mbqqlm1jlc"
+path="res://.godot/imported/lycith.png-575a8bebc8d8cc7c39de46349e835f84.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/doran.png"
-dest_files=["res://.godot/imported/doran.png-58d6ecc4bfc303cd3b6cfdf401e5b3b3.ctex"]
+source_file="res://assets/placeholder/portraits/lycith.png"
+dest_files=["res://.godot/imported/lycith.png-575a8bebc8d8cc7c39de46349e835f84.ctex"]
 
 [params]
 
