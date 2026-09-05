@@ -28,11 +28,11 @@ func show_for_move() -> void:
 	cancel_button.visible = true
 	show()
 
-## Post-move action phase: real choices, no Cancel (see BattleState docs on
-## why cancelling out of this step isn't supported yet).
+## Post-move action phase: real choices, plus Cancel (undoes the move and
+## goes back to picking a tile — see ActionMenuState.handle_cancel).
 func show_for_action(can_attack: bool, can_promote: bool) -> void:
 	attack_button.disabled = not can_attack
 	wait_button.disabled = false
 	promote_button.visible = can_promote
-	cancel_button.visible = false
+	cancel_button.visible = true
 	show()

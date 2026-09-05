@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scenes/battle/Battle.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/battle/BattleGrid.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/BattleHUD.tscn" id="3"]
 [ext_resource type="Script" path="res://battle/state_machine/BattleStateMachine.gd" id="4"]
 [ext_resource type="Resource" path="res://data/maps/chapter1.tres" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CombatStatsHUD.tscn" id="6"]
 
 [node name="Battle" type="Node2D"]
 script = ExtResource("1")
@@ -13,6 +14,8 @@ map_data = ExtResource("5")
 [node name="BattleGrid" parent="." instance=ExtResource("2")]
 
 [node name="BattleHUD" parent="." instance=ExtResource("3")]
+
+[node name="CombatStatsHUD" parent="." instance=ExtResource("6")]
 
 [node name="BattleStateMachine" type="Node" parent="."]
 script = ExtResource("4")

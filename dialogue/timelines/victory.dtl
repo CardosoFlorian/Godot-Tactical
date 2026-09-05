@@ -1,6 +1,10 @@
 Le champ de bataille se tait enfin.
-Aurora: C'est fini. On a tenu.
+join Aurora (happy) center
+join Doran left
+join Kessa right
+Aurora (happy): C'est fini. On a tenu.
 Doran: Pour cette fois.
 Kessa: On remet ça quand tu veux.
-Aurora: Repos. On l'a mérité.
+Aurora (happy): Repos. On l'a mérité.
+leave --All--
 Fin de la démonstration.

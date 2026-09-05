@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://addons/dialogic/Resources/dialogic_style.gd" id="1"]
 [ext_resource type="Script" path="res://addons/dialogic/Resources/dialogic_style_layer.gd" id="2"]
 [ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_FullBackground/full_background_layer.tscn" id="3"]
-[ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_VN_Portraits/vn_portrait_layer.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://dialogue/style/vn_portrait_layer_tactical.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_VN_Textbox/vn_textbox_layer.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_Input/full_advance_input_layer.tscn" id="6"]
 [ext_resource type="PackedScene" path="res://addons/dialogic/Modules/DefaultLayoutParts/Layer_Glossary/glossary_popup_layer.tscn" id="7"]
@@ -37,6 +37,8 @@ overrides = {
 "box_panel": "res://assets/ui/textbox_style.tres",
 "box_color_use_global": "false",
 "box_color_custom": "Color(1, 1, 1, 1)",
+"box_size": "Vector2(1280, 150)",
+"box_margin_bottom": "0",
 "name_label_box_panel": "res://assets/ui/name_label_style.tres",
 "name_label_box_use_global_color": "false",
 "name_label_box_modulate": "Color(1, 1, 1, 1)"

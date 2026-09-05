@@ -1,9 +1,10 @@
 class_name ActionMenuState
 extends BattleState
 ## Shows the Attack/Wait/Promote menu for a unit that has finished (or
-## skipped) moving. The MVP doesn't support undoing a move, so cancelling
-## out of the menu just ends the unit's turn as a Wait rather than
-## soft-locking on undo logic the game doesn't have yet.
+## skipped) moving. Cancelling here undoes the move (Battle.undo_move) and
+## goes back to "move" so the player can pick a different tile — any action
+## is undoable up until Wait or a resolved Attack actually commits it
+## (has_acted = true), per the rule the whole cancel chain follows.
 
 func enter(_previous_state_name: String = "") -> void:
 	var unit := battle.selected_unit
@@ -31,4 +32,5 @@ func handle_action_chosen(action_name: String) -> void:
 			enter()
 
 func handle_cancel() -> void:
-	handle_action_chosen("wait")
+	battle.undo_move(battle.selected_unit)
+	state_machine.change_state("move")

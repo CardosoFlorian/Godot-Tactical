@@ -62,6 +62,11 @@ func _play_dialogue(timeline_path: String) -> void:
 	SignalBus.dialogue_requested.emit(timeline_path)
 	if not Dialogic.timeline_ended.is_connected(_on_dialogue_finished):
 		Dialogic.timeline_ended.connect(_on_dialogue_finished, CONNECT_ONE_SHOT)
+	# Deferred to here (rather than _ready(), alongside register_all())
+	# because Dialogic's own subsystems aren't initialized yet during
+	# autoload _ready() — CampaignFlow is registered before Dialogic in
+	# project.godot. Safe to call every time; only connects once.
+	DialogueCharacters.connect_speaker_dimming()
 	Dialogic.start(timeline_path)
 
 func _on_dialogue_finished() -> void:

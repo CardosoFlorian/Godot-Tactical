@@ -37,6 +37,11 @@ func handle_unit_clicked(unit: Unit) -> void:
 	if attack_pos == null:
 		return
 	await _move_to(attack_pos)
+	# _move_to already clears the move-range highlight, but not this panel —
+	# same reasoning as TargetingState.handle_unit_clicked: this state
+	# doesn't formally exit (and hide it) until the whole combat scene
+	# finishes playing.
+	battle.ui.hide_action_menu()
 	await battle.execute_attack(mover, unit)
 	if battle.check_battle_end():
 		state_machine.change_state("game_over")

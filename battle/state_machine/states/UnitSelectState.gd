@@ -15,6 +15,7 @@ func handle_unit_clicked(unit: Unit) -> void:
 	if unit.unit_data.team != UnitData.Team.PLAYER or unit.has_acted:
 		return
 	battle.selected_unit = unit
+	battle.selected_unit_start_pos = unit.grid_pos
 	SignalBus.unit_selected.emit(unit)
 	if unit.has_moved:
 		state_machine.change_state("action_menu")

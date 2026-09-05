@@ -1,7 +1,11 @@
 Le camp de fortune, la veille de la première bataille.
-Aurora: L'ennemi campe près du pont. On attaque à l'aube.
+join Aurora (neutral) center
+join Doran left
+join Kessa right
+Aurora (neutral): L'ennemi campe près du pont. On attaque à l'aube.
 Doran: Compris. Je prends la lance, comme toujours.
 Kessa: Et moi je défonce tout ce qui bouge. Simple.
-Aurora: Kessa...
+Aurora (mad): Kessa...
 Kessa: Quoi, ça marche à tous les coups.
-Aurora: Restez groupés. On ne perd personne demain.
+Aurora (neutral): Restez groupés. On ne perd personne demain.
+leave --All--

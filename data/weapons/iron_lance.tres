@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://resources/defs/weapon_data.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/ui/weapon_icons/lance.png" id="2"]
 
 [resource]
 script = ExtResource("1")
@@ -13,3 +14,4 @@ weight = 7
 min_range = 1
 max_range = 1
 uses = 35
+icon = ExtResource("2")

@@ -1,5 +1,9 @@
 Le pont est pris. Les survivants ennemis se replient vers le nord.
+join Doran left
+join Aurora (neutral) center
+join Kessa right
 Doran: Première victoire. Personne n'est tombé.
-Aurora: Ne nous relâchons pas. Il en reste d'autres devant nous.
+Aurora (neutral): Ne nous relâchons pas. Il en reste d'autres devant nous.
 Kessa: Encore une bande à taper, ça me va.
-Aurora: En avant. La prochaine sera plus dure.
+Aurora (mad): En avant. La prochaine sera plus dure.
+leave --All--

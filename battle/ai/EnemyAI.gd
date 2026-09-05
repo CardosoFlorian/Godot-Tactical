@@ -59,14 +59,11 @@ static func _move_unit(unit: Unit, battle: Battle, target_tile: Vector2i) -> voi
 	unit.grid_pos = target_tile
 	battle.grid.set_occupant(target_tile, unit)
 
+## Goes through Battle.execute_attack (rather than calling CombatResolver
+## directly, as this used to) so enemy-initiated fights get the same
+## combat scene — camera, approach, strike animations — as player ones.
 static func _attack(attacker: Unit, target: Unit, battle: Battle) -> void:
-	var distance := absi(attacker.grid_pos.x - target.grid_pos.x) + absi(attacker.grid_pos.y - target.grid_pos.y)
-	var attacker_terrain := battle.grid.get_terrain_combat_bonus(attacker.grid_pos)
-	var target_terrain := battle.grid.get_terrain_combat_bonus(target.grid_pos)
-	SignalBus.combat_started.emit(attacker, target)
-	var result := CombatResolver.resolve_combat(attacker.unit_data, target.unit_data, distance, battle.rng, attacker_terrain, target_terrain)
-	SignalBus.combat_resolved.emit(result)
-	battle.apply_combat_aftermath(attacker, target)
+	await battle.execute_attack(attacker, target)
 
 ## Picks the reachable tile that gets closest to the nearest living player
 ## unit, without exceeding the unit's aggro range from its starting tile.
