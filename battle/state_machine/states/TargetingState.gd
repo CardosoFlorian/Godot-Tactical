@@ -21,7 +21,7 @@ func handle_unit_clicked(unit: Unit) -> void:
 		return
 	var attacker := battle.selected_unit
 	SignalBus.target_selected.emit(unit)
-	battle.execute_attack(attacker, unit)
+	await battle.execute_attack(attacker, unit)
 	if battle.check_battle_end():
 		state_machine.change_state("game_over")
 	else:

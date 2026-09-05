@@ -178,6 +178,9 @@ func execute_attack(attacker: Unit, defender: Unit) -> void:
 	var attacker_terrain := grid.get_terrain_combat_bonus(attacker.grid_pos)
 	var defender_terrain := grid.get_terrain_combat_bonus(defender.grid_pos)
 	SignalBus.combat_started.emit(attacker, defender)
+	# No-op for units without a rigged battle sprite (most of the cast) —
+	# see Unit.play_attack_animation.
+	await attacker.play_attack_animation()
 	var result := CombatResolver.resolve_combat(attacker.unit_data, defender.unit_data, distance, rng, attacker_terrain, defender_terrain)
 	SignalBus.combat_resolved.emit(result)
 	apply_combat_aftermath(attacker, defender)

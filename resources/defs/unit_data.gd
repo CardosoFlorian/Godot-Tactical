@@ -22,6 +22,11 @@ enum AIBehavior { NONE, AGGRESSIVE, DEFENSIVE }
 @export_group("Portraits & sprites")
 @export var portrait: Texture2D
 @export var battle_sprite: Texture2D
+## Optional cutout-rig battle sprite (idle/attack animations). When set,
+## Unit.gd instances this instead of drawing battle_sprite as a static
+## Sprite2D. Most units don't have one yet and just fall back to the plain
+## texture above.
+@export var rigged_battle_sprite: PackedScene
 
 @export_group("Enemy AI (ignored for player units)")
 @export var ai_behavior: AIBehavior = AIBehavior.AGGRESSIVE

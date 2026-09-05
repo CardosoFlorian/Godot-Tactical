@@ -37,7 +37,7 @@ func handle_unit_clicked(unit: Unit) -> void:
 	if attack_pos == null:
 		return
 	await _move_to(attack_pos)
-	battle.execute_attack(mover, unit)
+	await battle.execute_attack(mover, unit)
 	if battle.check_battle_end():
 		state_machine.change_state("game_over")
 	else:
