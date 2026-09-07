@@ -8,4 +8,16 @@ Kessa: Et moi je défonce tout ce qui bouge. Simple.
 Aurora (mad): Kessa...
 Kessa: Quoi, ça marche à tous les coups.
 Aurora (neutral): Restez groupés. On ne perd personne demain.
+Kessa: Bon, je vais vérifier les sentinelles avant que ça tourne mal.
+leave Kessa
+join Martin (neutral) right
+Martin (neutral): Pardonnez mon retard, Votre Altesse. J'en ai terminé avec l'inventaire des vivres.
+Aurora (happy): Martin. Toujours aussi ponctuel.
+Martin (stern): Un bibliothécaire en retard n'en est plus un, Votre Altesse. Madame Lycith, tout va bien de votre côté ?
+Lycith (neutral): Oui. Merci, Martin.
+Martin (talk): À la bonne heure. Où est passée Madame Kessa ?
+Aurora (laugh): En ronde, comme toujours. Elle ne tient pas en place.
+Martin (pensive): Je vois. Je lui garderai tout de même une ration pour son retour.
+Aurora (neutral): Merci, Martin. Va te reposer, la nuit sera longue.
+Martin (neutral): Bien, Votre Altesse.
 leave --All--

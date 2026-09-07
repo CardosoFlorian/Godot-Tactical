@@ -64,6 +64,7 @@ layout_mode = 1
 anchor_left = 0.76
 anchor_right = 0.96
 anchor_bottom = 1.0
+offset_bottom = -147.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2

@@ -31,10 +31,10 @@ const PORTRAIT_DIR := "res://assets/placeholder/portraits/"
 ## enemies would ever need one.
 ##
 ## Doran removed 2026-09-05: replaced by Lycith (see LYCITH_PORTRAITS below)
-## as one of Aurora's 3 companions in every timeline.
+## as one of Aurora's 3 companions in every timeline. Elyn removed 2026-09-07,
+## same way: replaced by Martin (see MARTIN_PORTRAITS below).
 const ROSTER := [
 	{"id": "Kessa", "portrait": "kessa.png"},
-	{"id": "Elyn", "portrait": "elyn.png"},
 ]
 
 ## Lycith portrait name -> file, same AURORA_PORTRAITS pattern. Lives in its
@@ -87,6 +87,36 @@ const AURORA_PORTRAITS := {
 	"embarrassed": "aurora/embarrassed.png",
 	"pensive": "aurora/pensive.png",
 }
+
+## Martin portrait name -> file, same pattern as AURORA_PORTRAITS/
+## LYCITH_PORTRAITS. Cropped 2026-09-07 from a 5x2 ChatGPT expression sheet
+## that had no black divider bars (unlike Aurora/Lycith's later sheets) — the
+## gaps between panels were still wide/clean enough for a precise pixel-scan
+## crop (confirmed no bleed on any of the 10 expressions before shipping).
+const MARTIN_PORTRAITS := {
+	"neutral": "martin/neutral.png",
+	"happy": "martin/happy.png",
+	"sad": "martin/sad.png",
+	"mad": "martin/mad.png",
+	"shock": "martin/shock.png",
+	"laugh": "martin/laugh.png",
+	"stern": "martin/stern.png",
+	"talk": "martin/talk.png",
+	"embarrassed": "martin/embarrassed.png",
+	"pensive": "martin/pensive.png",
+}
+
+## 2026-09-08: briefly bumped to 1.0 as a diagnostic (confirmed scale DOES
+## apply correctly — he visibly got bigger). Real bug found separately: his
+## 5 bottom-row expression files each had ~8-9 rows of near-invisible
+## (alpha≈10/255) ghost pixels below the real content — invisible to the eye
+## but very much "real content" to a naive alpha>0 bbox crop, so Dialogic's
+## bottom-anchor (which uses the whole file's own canvas, not a re-cropped
+## bbox) was anchoring off empty dead space instead of his actual hand/book.
+## The 5 top-row files had zero such ghosting. Recropped all 10 with an
+## alpha<30 cutoff before computing the bbox. Back to 0.65 now that the real
+## fix is in — retest before assuming this exact number is final.
+const MARTIN_PORTRAIT_SCALE := 0.65
 
 ## All names render in black now that the name label has its own readable
 ## panel behind it (Kenney ui-pack-pixel-adventure), rather than one color
@@ -228,6 +258,19 @@ static func register_all() -> void:
 		lycith.add_portrait(portrait_name, PORTRAIT_DIR + LYCITH_PORTRAITS[portrait_name])
 	lycith.default_portrait = "neutral"
 	directory["Lycith"] = lycith
+
+	var martin := DialogicCharacter.new()
+	martin.display_name = "Martin"
+	martin.color = NAME_COLOR
+	martin.scale = MARTIN_PORTRAIT_SCALE
+	# No mirror needed regardless of which side he ends up joining — unlike
+	# Aurora/Lycith's side-on art, his portrait is front-facing by design
+	# (see martin_character_concept), so there's no "looking the wrong way"
+	# to correct for.
+	for portrait_name in MARTIN_PORTRAITS:
+		martin.add_portrait(portrait_name, PORTRAIT_DIR + MARTIN_PORTRAITS[portrait_name])
+	martin.default_portrait = "neutral"
+	directory["Martin"] = martin
 
 	Engine.set_meta("dch_directory", directory)
 	_registered = true
