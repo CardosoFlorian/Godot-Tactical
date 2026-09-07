@@ -40,11 +40,11 @@ func show_hover_unit(unit_data: UnitData) -> void:
 func hide_hover_unit() -> void:
 	hover_info_panel.hide_panel()
 
-## Move phase: same panel as the action menu, but only Cancel is clickable
-## (Attack/Wait/Promote show greyed out rather than disappearing, so the
-## layout doesn't jump between phases).
-func show_move_menu() -> void:
-	action_menu.show_for_move()
+## Move phase: same panel as the action menu, but only Cancel (and Attack,
+## when `can_attack` is true) is clickable — Wait/Promote show greyed out
+## rather than disappearing, so the layout doesn't jump between phases.
+func show_move_menu(can_attack: bool = false) -> void:
+	action_menu.show_for_move(can_attack)
 
 func show_action_menu(_unit, can_attack: bool, can_promote: bool = false) -> void:
 	action_menu.show_for_action(can_attack, can_promote)

@@ -20,10 +20,17 @@ func _ready() -> void:
 	promote_button.pressed.connect(func(): promote_pressed.emit())
 	cancel_button.pressed.connect(func(): cancel_pressed.emit())
 
-## Move phase: nothing but Cancel is clickable yet.
-func show_for_move() -> void:
-	attack_button.disabled = true
-	wait_button.disabled = true
+## Move phase: Cancel and Wait are always clickable (skipping a unit's turn
+## in place is a valid choice on its own, no move required), and Attack too
+## when the unit can already reach a target without moving at all —
+## otherwise the player is forced through a "click my own tile to confirm
+## not moving, THEN click Attack/Wait" detour for something that doesn't
+## need a move at all (see MoveState.handle_action_chosen, which is what
+## actually acts on these buttons when enabled here). Promote still needs a
+## real move/confirm first, same as before.
+func show_for_move(can_attack: bool = false) -> void:
+	attack_button.disabled = not can_attack
+	wait_button.disabled = false
 	promote_button.visible = false
 	cancel_button.visible = true
 	show()

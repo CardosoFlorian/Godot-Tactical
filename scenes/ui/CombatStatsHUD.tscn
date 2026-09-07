@@ -59,44 +59,29 @@ layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="LeftToRightRow" type="HBoxContainer" parent="ArrowsCenter/ArrowsVBox"]
+[node name="Row1" type="Label" parent="ArrowsCenter/ArrowsVBox"]
 layout_mode = 2
-alignment = 1
-theme_override_constants/separation = 8
-
-[node name="LeftDmgLabel" type="Label" parent="ArrowsCenter/ArrowsVBox/LeftToRightRow"]
-layout_mode = 2
+horizontal_alignment = 1
 theme_override_font_sizes/font_size = 28
 theme_override_colors/font_color = Color(0.55, 0.75, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
-text = "0"
+text = "0 ▶"
 
-[node name="LeftArrow" type="Label" parent="ArrowsCenter/ArrowsVBox/LeftToRightRow"]
+[node name="Row2" type="Label" parent="ArrowsCenter/ArrowsVBox"]
 layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(1, 0.6, 0.4, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+text = "◀ 0"
+
+[node name="Row3" type="Label" parent="ArrowsCenter/ArrowsVBox"]
+layout_mode = 2
+horizontal_alignment = 1
 theme_override_font_sizes/font_size = 28
 theme_override_colors/font_color = Color(0.55, 0.75, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
-text = "▶"
-
-[node name="RightToLeftRow" type="HBoxContainer" parent="ArrowsCenter/ArrowsVBox"]
-layout_mode = 2
-alignment = 1
-theme_override_constants/separation = 8
-
-[node name="RightArrow" type="Label" parent="ArrowsCenter/ArrowsVBox/RightToLeftRow"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 28
-theme_override_colors/font_color = Color(1, 0.6, 0.4, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 6
-text = "◀"
-
-[node name="RightDmgLabel" type="Label" parent="ArrowsCenter/ArrowsVBox/RightToLeftRow"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 28
-theme_override_colors/font_color = Color(1, 0.6, 0.4, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 6
-text = "0"
+text = "0 ▶"

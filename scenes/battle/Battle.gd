@@ -137,16 +137,21 @@ func _update_targeting_hover() -> void:
 ## from the real pre-fight numbers instead of the already-resolved ones.
 func _display_combat_stats(attacker: Unit, defender: Unit, stats: Dictionary, show_ghost: bool,
 		attacker_hp: int = -1, defender_hp: int = -1) -> void:
+	# The attacker always strikes first chronologically, regardless of which
+	# side (left/player or right/enemy) that ends up being — the HUD needs
+	# this to lay its arrow rows out in the real attack/counter/double order.
 	if attacker.unit_data.team == UnitData.Team.PLAYER:
 		combat_stats.show_combat(
 			attacker.unit_data, stats["attacker_dmg"], stats["attacker_hit"], stats["attacker_crit"], true,
 			defender.unit_data, stats["defender_dmg"], stats["defender_hit"], stats["defender_crit"], stats["defender_can_counter"],
-			show_ghost, attacker_hp, defender_hp)
+			show_ghost, attacker_hp, defender_hp,
+			true, stats["attacker_hits"], stats["defender_hits"])
 	else:
 		combat_stats.show_combat(
 			defender.unit_data, stats["defender_dmg"], stats["defender_hit"], stats["defender_crit"], stats["defender_can_counter"],
 			attacker.unit_data, stats["attacker_dmg"], stats["attacker_hit"], stats["attacker_crit"], true,
-			show_ghost, defender_hp, attacker_hp)
+			show_ghost, defender_hp, attacker_hp,
+			false, stats["defender_hits"], stats["attacker_hits"])
 
 func _clear_combat_preview() -> void:
 	_preview_target = null
@@ -302,17 +307,30 @@ func execute_attack(attacker: Unit, defender: Unit) -> void:
 ## current positions — used both for the real combat scene and for the
 ## hover preview in TargetingState (see _update_targeting_hover), so both
 ## show exactly the same numbers.
+## "*_dmg" is the TOTAL across every hit that combatant will land this
+## engagement (single hit, or doubled per CombatResolver.can_double) — not
+## the per-swing might. "*_hits" (1, or 2 if doubling; 0 for a defender that
+## can't counter at all) is kept alongside so the HUD's arrow sequence can
+## recover the per-swing number and lay out the real strike order.
 func _compute_combat_stats(attacker: Unit, defender: Unit) -> Dictionary:
 	var distance := absi(attacker.grid_pos.x - defender.grid_pos.x) + absi(attacker.grid_pos.y - defender.grid_pos.y)
 	var attacker_terrain := grid.get_terrain_combat_bonus(attacker.grid_pos)
 	var defender_terrain := grid.get_terrain_combat_bonus(defender.grid_pos)
 	var defender_can_counter := CombatResolver.is_in_weapon_range(distance, defender.unit_data.get_equipped_weapon())
+	var attacker_hits := 2 if CombatResolver.can_double(attacker.unit_data, defender.unit_data) else 1
+	var defender_hits := 0
+	if defender_can_counter:
+		defender_hits = 2 if CombatResolver.can_double(defender.unit_data, attacker.unit_data) else 1
+	var attacker_swing := CombatResolver.get_damage(attacker.unit_data, defender.unit_data, defender_terrain["def"])
+	var defender_swing := CombatResolver.get_damage(defender.unit_data, attacker.unit_data, attacker_terrain["def"]) if defender_can_counter else 0
 	return {
 		"attacker_hit": CombatResolver.get_hit_chance(attacker.unit_data, defender.unit_data, defender_terrain["avoid"]),
-		"attacker_dmg": CombatResolver.get_damage(attacker.unit_data, defender.unit_data, defender_terrain["def"]),
+		"attacker_dmg": attacker_swing * attacker_hits,
+		"attacker_hits": attacker_hits,
 		"attacker_crit": CombatResolver.get_crit_chance(attacker.unit_data, defender.unit_data),
 		"defender_hit": CombatResolver.get_hit_chance(defender.unit_data, attacker.unit_data, attacker_terrain["avoid"]) if defender_can_counter else 0,
-		"defender_dmg": CombatResolver.get_damage(defender.unit_data, attacker.unit_data, attacker_terrain["def"]) if defender_can_counter else 0,
+		"defender_dmg": defender_swing * defender_hits,
+		"defender_hits": defender_hits,
 		"defender_crit": CombatResolver.get_crit_chance(defender.unit_data, attacker.unit_data) if defender_can_counter else 0,
 		"defender_can_counter": defender_can_counter,
 	}

@@ -7,12 +7,15 @@ extends PanelContainer
 ## (computed once by Battle.execute_attack); HP updates as strikes land.
 ##
 ## The ghost preview: GhostBar (behind, translucent) always shows the real
-## current HP; HPBar (in front, opaque) shows the *projected* HP after the
-## next incoming hit. Since HPBar's value is always <= GhostBar's, the
-## opaque front bar covers the "safe" remainder and the translucent tail
-## poking out past it reads as "this much is about to be lost". Once a
-## strike actually lands, set_hp collapses both bars to the same real
-## value — there's no per-strike lookahead past the first hit.
+## current HP; HPBar (in front, opaque) shows the *projected* HP after
+## `incoming_dmg` — the OTHER combatant's full Dmg stat, i.e. the total
+## across every hit they'll land this engagement (2026-09-08: this used to
+## be just their first swing, now it's the same total the Dmg stat itself
+## shows, so the two numbers on screen always agree). Since HPBar's value is
+## always <= GhostBar's, the opaque front bar covers the "safe" remainder
+## and the translucent tail poking out past it reads as "this much is about
+## to be lost". Once a strike actually lands, set_hp collapses both bars to
+## the same real value.
 
 const PLAYER_COLOR := Color(0.16, 0.32, 0.62)
 const ENEMY_COLOR := Color(0.62, 0.16, 0.16)

@@ -5,7 +5,7 @@ extends RefCounted
 ## UnitData passed in) so the same functions serve both real combat
 ## resolution and enemy AI prediction/scoring.
 
-const DOUBLE_ATTACK_SPD_THRESHOLD := 4
+const DOUBLE_ATTACK_SPD_THRESHOLD := 5
 const CRIT_DAMAGE_MULTIPLIER := 3
 
 static func _triangle_mods(attacker: UnitData, defender: UnitData) -> Dictionary:
@@ -95,14 +95,18 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 	var defender_weapon := defender.get_equipped_weapon()
 	var defender_can_counter := is_in_weapon_range(distance, defender_weapon)
 
+	## Classic GBA Fire Emblem order: attacker's first strike, then the
+	## defender's counter, and only THEN a double-attack's extra hit — never
+	## both of the attacker's hits back-to-back before the defender gets to
+	## counter. At most one side can double (the Spd gap can't favor both).
 	var order: Array[Dictionary] = []
-	var attacker_hits := 2 if can_double(attacker, defender) else 1
-	for i in attacker_hits:
-		order.append({"source": attacker, "target": defender, "terrain": defender_terrain})
+	order.append({"source": attacker, "target": defender, "terrain": defender_terrain})
 	if defender_can_counter:
-		var defender_hits := 2 if can_double(defender, attacker) else 1
-		for i in defender_hits:
-			order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
+		order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
+	if can_double(attacker, defender):
+		order.append({"source": attacker, "target": defender, "terrain": defender_terrain})
+	elif defender_can_counter and can_double(defender, attacker):
+		order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
 
 	for strike in order:
 		var source: UnitData = strike["source"]
