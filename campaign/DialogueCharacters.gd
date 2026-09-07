@@ -57,9 +57,11 @@ const LYCITH_PORTRAITS := {
 ## than the old full-body art did (and for the later retune when the source
 ## sheet's crop proportions changed again). Lycith's bust canvas matches
 ## Aurora's proportions (both cropped from the same 5x2 ChatGPT expression
-## sheet layout), so she uses the same scale — no separate slot-width
-## juggling needed anymore now that neither portrait is a wide action pose.
-const LYCITH_PORTRAIT_SCALE := 0.65
+## sheet layout), so the same base scale applies — just nudged down below
+## Aurora's (2026-09-07) so she reads as "a bit smaller than Aurora" per
+## [[lycith_character_concept]], same ~0.85x ratio the old full-body scales
+## used (0.85/1.0) before the bust-portrait switch.
+const LYCITH_PORTRAIT_SCALE := 0.55
 
 ## Portrait name -> file, for Aurora specifically. Pick one per line with
 ## Dialogic's "Name (portrait): text" syntax, e.g. "Aurora (mad): Kessa...".

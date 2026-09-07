@@ -63,11 +63,12 @@ func _apply_facing() -> void:
 	if not is_inside_tree():
 		return
 	if _rig:
-		# Aurora's rigged art faces right unflipped (unlike the plain
-		# placeholder sprite below), so this condition is the mirror image
-		# of the flip_h one.
+		# Different rigs face different ways natively (Aurora's art faces
+		# right, Lycith's faces left) — each rig script reports its own via
+		# faces_right_by_default() rather than this code hardcoding one.
+		var faces_right: bool = _rig.faces_right_by_default() if _rig.has_method("faces_right_by_default") else true
 		var s := absf(_rig.scale.x)
-		_rig.scale.x = -s if facing_left else s
+		_rig.scale.x = -s if facing_left == faces_right else s
 	else:
 		sprite.flip_h = not facing_left
 

@@ -1,17 +1,18 @@
-class_name AuroraBattleSprite
+class_name LycithBattleSprite
 extends Node2D
-## Aurora's battle sprite: straight flipbooks of drawn frames (no cutout
-## rig) — idle loops from assets/units/aurora/idle/, attack plays once from
-## assets/units/aurora/attack/. Only one of IdleSprite/AttackSprite is ever
+## Lycith's battle sprite: straight flipbooks of drawn frames (no cutout
+## rig), same pattern as AuroraBattleSprite. Idle loops from
+## assets/units/lycith/idle/, attack plays once from
+## assets/units/lycith/attack/. Only one of IdleSprite/AttackSprite is ever
 ## visible at a time.
 
-const IDLE_FRAME_DIR := "res://assets/units/aurora/idle/"
+const IDLE_FRAME_DIR := "res://assets/units/lycith/idle/"
 const IDLE_FRAME_COUNT := 14
 const IDLE_FPS := 8.0  # tune here if the loop reads as too fast/slow
 
-const ATTACK_FRAME_DIR := "res://assets/units/aurora/attack/"
-const ATTACK_FRAME_COUNT := 14
-const ATTACK_FPS := 14.0  # tune here if the swing reads as too fast/slow
+const ATTACK_FRAME_DIR := "res://assets/units/lycith/attack/"
+const ATTACK_FRAME_COUNT := 15  # one more frame than Aurora's attack — this sheet came back 15, not 14
+const ATTACK_FPS := 14.0  # tune here if the thrust reads as too fast/slow
 
 signal attack_finished
 
@@ -29,13 +30,8 @@ func play_idle() -> void:
 	if _idle_sprite.animation != "idle" or not _idle_sprite.is_playing():
 		_idle_sprite.play("idle")
 
-## Unlike Lycith's art, this sprite's native pose faces right — Unit.gd's
-## _apply_facing() reads this to know whether to flip.
-func faces_right_by_default() -> bool:
-	return true
-
-## Awaits the full swing before returning, same contract the old cutout-rig
-## version had — callers that sequence combat resolution on this rely on it.
+## Awaits the full thrust before returning, same contract AuroraBattleSprite
+## has — callers that sequence combat resolution on this rely on it.
 func play_attack() -> void:
 	_idle_sprite.visible = false
 	_attack_sprite.visible = true
@@ -43,6 +39,15 @@ func play_attack() -> void:
 	await _attack_sprite.animation_finished
 	attack_finished.emit()
 	play_idle()
+
+## Unit.gd's _apply_facing() reads this to know whether to flip. Confirmed
+## by the user in-game (2026-09-07): the first guess (false, from reading
+## frame 1's head-tilt as "facing left") was backwards — moving right made
+## her look left and vice versa, the exact sign-flip pattern of getting this
+## one boolean wrong. Her native pose actually reads as facing right once
+## judged by body/weapon-arm orientation rather than head tilt alone.
+func faces_right_by_default() -> bool:
+	return true
 
 func _build_idle_frames() -> void:
 	var frames := SpriteFrames.new()
