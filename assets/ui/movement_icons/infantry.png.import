@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://5rh5tftb36a8"
-path="res://.godot/imported/lycith_pensive.png-66032c8a9b83fbc7dd23ba97720c2b08.ctex"
+uid="uid://bmt8y3xm4pusk"
+path="res://.godot/imported/infantry.png-c39479a3fdd79a379886583d1892f5db.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/lycith_pensive.png"
-dest_files=["res://.godot/imported/lycith_pensive.png-66032c8a9b83fbc7dd23ba97720c2b08.ctex"]
+source_file="res://assets/ui/movement_icons/infantry.png"
+dest_files=["res://.godot/imported/infantry.png-c39479a3fdd79a379886583d1892f5db.ctex"]
 
 [params]
 

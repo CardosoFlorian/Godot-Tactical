@@ -37,18 +37,21 @@ const ROSTER := [
 	{"id": "Elyn", "portrait": "elyn.png"},
 ]
 
-## Lycith portrait name -> file, same AURORA_PORTRAITS pattern.
+## Lycith portrait name -> file, same AURORA_PORTRAITS pattern. Lives in its
+## own subfolder (assets/placeholder/portraits/lycith/) — see AURORA_PORTRAITS
+## below for why (2026-09-07 reorg, once there were 10 expressions per
+## character and a flat folder got hard to search).
 const LYCITH_PORTRAITS := {
-	"neutral": "lycith_neutral.png",
-	"happy": "lycith_happy.png",
-	"sad": "lycith_sad.png",
-	"mad": "lycith_mad.png",
-	"shock": "lycith_shock.png",
-	"laugh": "lycith_laugh.png",
-	"stern": "lycith_stern.png",
-	"talk": "lycith_talk.png",
-	"embarrassed": "lycith_embarrassed.png",
-	"pensive": "lycith_pensive.png",
+	"neutral": "lycith/neutral.png",
+	"happy": "lycith/happy.png",
+	"sad": "lycith/sad.png",
+	"mad": "lycith/mad.png",
+	"shock": "lycith/shock.png",
+	"laugh": "lycith/laugh.png",
+	"stern": "lycith/stern.png",
+	"talk": "lycith/talk.png",
+	"embarrassed": "lycith/embarrassed.png",
+	"pensive": "lycith/pensive.png",
 }
 
 ## Both Aurora and Lycith switched from full-body action-pose art to bust
@@ -65,17 +68,24 @@ const LYCITH_PORTRAIT_SCALE := 0.55
 
 ## Portrait name -> file, for Aurora specifically. Pick one per line with
 ## Dialogic's "Name (portrait): text" syntax, e.g. "Aurora (mad): Kessa...".
+## Lives in its own subfolder (assets/placeholder/portraits/aurora/) rather
+## than flat in PORTRAIT_DIR — 2026-09-07 reorg, requested once there were 10
+## expressions per character (20 files total between her and Lycith) making
+## the flat portraits folder hard to search. Only the two named characters
+## with real per-expression art got subfolders; ROSTER's single-portrait
+## characters (Kessa, Elyn, enemies) stay flat in PORTRAIT_DIR — a single
+## file per character isn't the thing that was hard to find.
 const AURORA_PORTRAITS := {
-	"neutral": "aurora_neutral.png",
-	"happy": "aurora_happy.png",
-	"sad": "aurora_sad.png",
-	"mad": "aurora_mad.png",
-	"shock": "aurora_shock.png",
-	"laugh": "aurora_laugh.png",
-	"stern": "aurora_stern.png",
-	"talk": "aurora_talk.png",
-	"embarrassed": "aurora_embarrassed.png",
-	"pensive": "aurora_pensive.png",
+	"neutral": "aurora/neutral.png",
+	"happy": "aurora/happy.png",
+	"sad": "aurora/sad.png",
+	"mad": "aurora/mad.png",
+	"shock": "aurora/shock.png",
+	"laugh": "aurora/laugh.png",
+	"stern": "aurora/stern.png",
+	"talk": "aurora/talk.png",
+	"embarrassed": "aurora/embarrassed.png",
+	"pensive": "aurora/pensive.png",
 }
 
 ## All names render in black now that the name label has its own readable

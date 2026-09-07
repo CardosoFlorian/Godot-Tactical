@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://due1pss7csspx"
-path="res://.godot/imported/aurora_embarrassed.png-28c5c7f35a0adbf9dc4d9e89d49e8420.ctex"
+uid="uid://cpaw7sahxx6oj"
+path="res://.godot/imported/happy.png-7de299aec2f030276a28b0a666f700c7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/aurora_embarrassed.png"
-dest_files=["res://.godot/imported/aurora_embarrassed.png-28c5c7f35a0adbf9dc4d9e89d49e8420.ctex"]
+source_file="res://assets/placeholder/portraits/lycith/happy.png"
+dest_files=["res://.godot/imported/happy.png-7de299aec2f030276a28b0a666f700c7.ctex"]
 
 [params]
 

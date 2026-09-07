@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b0o8021eh74sr"
-path="res://.godot/imported/lycith_talk.png-abea6db97de6fed706dbc024d931bdac.ctex"
+uid="uid://csqpbsdbeyoq"
+path="res://.godot/imported/laugh.png-7789fcf6ee67f03183105cf6c6a7b542.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/lycith_talk.png"
-dest_files=["res://.godot/imported/lycith_talk.png-abea6db97de6fed706dbc024d931bdac.ctex"]
+source_file="res://assets/placeholder/portraits/aurora/laugh.png"
+dest_files=["res://.godot/imported/laugh.png-7789fcf6ee67f03183105cf6c6a7b542.ctex"]
 
 [params]
 

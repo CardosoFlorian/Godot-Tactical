@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cibs7uta47ljj"
-path="res://.godot/imported/lycith_shock.png-195b70bcc9d2326e49d859a2b04ad8f4.ctex"
+uid="uid://b70d4grsmh1qd"
+path="res://.godot/imported/stern.png-eb7fa15e6e01e6ac6c519d75a5a24dc0.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/lycith_shock.png"
-dest_files=["res://.godot/imported/lycith_shock.png-195b70bcc9d2326e49d859a2b04ad8f4.ctex"]
+source_file="res://assets/placeholder/portraits/aurora/stern.png"
+dest_files=["res://.godot/imported/stern.png-eb7fa15e6e01e6ac6c519d75a5a24dc0.ctex"]
 
 [params]
 

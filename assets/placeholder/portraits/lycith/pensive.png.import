@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cas8nfw06evjn"
-path="res://.godot/imported/lycith_embarrassed.png-637293bef21f5fe343876aefe32c6ec4.ctex"
+uid="uid://5rh5tftb36a8"
+path="res://.godot/imported/pensive.png-135683707c36a2d8a68269099324856c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/lycith_embarrassed.png"
-dest_files=["res://.godot/imported/lycith_embarrassed.png-637293bef21f5fe343876aefe32c6ec4.ctex"]
+source_file="res://assets/placeholder/portraits/lycith/pensive.png"
+dest_files=["res://.godot/imported/pensive.png-135683707c36a2d8a68269099324856c.ctex"]
 
 [params]
 

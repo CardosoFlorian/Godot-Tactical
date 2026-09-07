@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cpaw7sahxx6oj"
-path="res://.godot/imported/lycith_happy.png-6efcbcf2fb8ee4bb28d181e9eedfaa80.ctex"
+uid="uid://r26fghiwn27b"
+path="res://.godot/imported/neutral.png-968bd137a15f901e5e4d378390b9747a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/lycith_happy.png"
-dest_files=["res://.godot/imported/lycith_happy.png-6efcbcf2fb8ee4bb28d181e9eedfaa80.ctex"]
+source_file="res://assets/placeholder/portraits/lycith/neutral.png"
+dest_files=["res://.godot/imported/neutral.png-968bd137a15f901e5e4d378390b9747a.ctex"]
 
 [params]
 

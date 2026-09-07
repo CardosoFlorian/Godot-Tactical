@@ -7,6 +7,14 @@ extends CanvasLayer
 @onready var left_panel: CombatStatsPanel = $LeftPanel
 @onready var right_panel: CombatStatsPanel = $RightPanel
 
+## Center damage-flow arrows (2026-09-07, Fire Emblem Engage-style forecast
+## reference) — one row per direction, hidden entirely on whichever side
+## can't act, same "no misleading zero" rule the Dmg/Hit/Crit blocks use.
+@onready var _left_to_right_row: HBoxContainer = $ArrowsCenter/ArrowsVBox/LeftToRightRow
+@onready var _left_dmg_label: Label = $ArrowsCenter/ArrowsVBox/LeftToRightRow/LeftDmgLabel
+@onready var _right_to_left_row: HBoxContainer = $ArrowsCenter/ArrowsVBox/RightToLeftRow
+@onready var _right_dmg_label: Label = $ArrowsCenter/ArrowsVBox/RightToLeftRow/RightDmgLabel
+
 var _left_data: UnitData
 var _right_data: UnitData
 
@@ -34,6 +42,10 @@ func show_combat(left_data: UnitData, left_dmg: int, left_hit: int, left_crit: i
 	var left_incoming := left_dmg if show_ghost else 0
 	left_panel.show_unit(left_data, left_dmg, left_hit, left_crit, left_can_act, right_incoming, left_hp)
 	right_panel.show_unit(right_data, right_dmg, right_hit, right_crit, right_can_act, left_incoming, right_hp)
+	_left_to_right_row.visible = left_can_act
+	_left_dmg_label.text = str(left_dmg)
+	_right_to_left_row.visible = right_can_act
+	_right_dmg_label.text = str(right_dmg)
 	show()
 
 func update_hp(unit_data: UnitData, new_hp: int) -> void:

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b70d4grsmh1qd"
-path="res://.godot/imported/aurora_stern.png-cc4920e9896b11b77fe5543a0ab9dbfe.ctex"
+uid="uid://nsj35ksedt71"
+path="res://.godot/imported/shock.png-dc0ddef53bbd6dfec0823a8854937e26.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/aurora_stern.png"
-dest_files=["res://.godot/imported/aurora_stern.png-cc4920e9896b11b77fe5543a0ab9dbfe.ctex"]
+source_file="res://assets/placeholder/portraits/aurora/shock.png"
+dest_files=["res://.godot/imported/shock.png-dc0ddef53bbd6dfec0823a8854937e26.ctex"]
 
 [params]
 

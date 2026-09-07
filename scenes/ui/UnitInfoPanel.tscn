@@ -30,6 +30,12 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "Classe Niv.1"
 
+[node name="MovementIcon" type="TextureRect" parent="VBox/ClassRow"]
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+size_flags_vertical = 4
+stretch_mode = 5
+
 [node name="ProficiencySpacer" type="Control" parent="VBox/ClassRow"]
 layout_mode = 2
 size_flags_horizontal = 3

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://s032l6kenoqc"
-path="res://.godot/imported/aurora_sad.png-2bfb4a9a98cb391a6ed7dc7f26ea52e1.ctex"
+uid="uid://b0o8021eh74sr"
+path="res://.godot/imported/talk.png-c796b2cdddc82098675a8fc918fbb53c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/aurora_sad.png"
-dest_files=["res://.godot/imported/aurora_sad.png-2bfb4a9a98cb391a6ed7dc7f26ea52e1.ctex"]
+source_file="res://assets/placeholder/portraits/lycith/talk.png"
+dest_files=["res://.godot/imported/talk.png-c796b2cdddc82098675a8fc918fbb53c.ctex"]
 
 [params]
 

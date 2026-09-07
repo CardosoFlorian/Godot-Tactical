@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://nsj35ksedt71"
-path="res://.godot/imported/aurora_shock.png-6ad3a0c4ce2fae60c82d9031b84c576f.ctex"
+uid="uid://cibs7uta47ljj"
+path="res://.godot/imported/shock.png-29f1b5e1ae9dbe051b86a52e3e0dd499.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/aurora_shock.png"
-dest_files=["res://.godot/imported/aurora_shock.png-6ad3a0c4ce2fae60c82d9031b84c576f.ctex"]
+source_file="res://assets/placeholder/portraits/lycith/shock.png"
+dest_files=["res://.godot/imported/shock.png-29f1b5e1ae9dbe051b86a52e3e0dd499.ctex"]
 
 [params]
 
