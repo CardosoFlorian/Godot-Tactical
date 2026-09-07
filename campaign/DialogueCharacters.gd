@@ -37,25 +37,29 @@ const ROSTER := [
 	{"id": "Elyn", "portrait": "elyn.png"},
 ]
 
-## Lycith portrait name -> file, same AURORA_PORTRAITS pattern. Real art in
-## progress — only "neutral" exists so far; add "happy"/"sad"/"mad"/"shock"
-## here (as "lycith_happy.png" etc.) once they're generated.
+## Lycith portrait name -> file, same AURORA_PORTRAITS pattern.
 const LYCITH_PORTRAITS := {
 	"neutral": "lycith_neutral.png",
+	"happy": "lycith_happy.png",
+	"sad": "lycith_sad.png",
+	"mad": "lycith_mad.png",
+	"shock": "lycith_shock.png",
+	"laugh": "lycith_laugh.png",
+	"stern": "lycith_stern.png",
+	"talk": "lycith_talk.png",
+	"embarrassed": "lycith_embarrassed.png",
+	"pensive": "lycith_pensive.png",
 }
 
-## Lycith joins at "left". A first pass gave her the same 256px slot Doran
-## used and scale 0.5 to fit it — which made her look half Aurora's HEIGHT,
-## absurd for "un peu plus petite qu'Aurora" (she should differ by a normal
-## human amount, not by half). Fixed at the layout level instead of by
-## shrinking her further: "left" is now 384px wide in
-## vn_portrait_layer_tactical.tscn (reclaimed from "center", which only
-## needs ~560px for Aurora's actual visible content despite her wider
-## canvas, and from "leftmost"). At scale 0.85 (720*0.85=612px tall, ~85%
-## of Aurora's height — a believable "a bit shorter"), her content renders
-## ~320px wide (her canvas content bbox is ~79% of a 1024-wide canvas),
-## comfortably inside the 384px slot without touching Aurora's or Kessa's.
-const LYCITH_PORTRAIT_SCALE := 0.85
+## Both Aurora and Lycith switched from full-body action-pose art to bust
+## (chest-up) portraits on 2026-09-06 — see AURORA_PORTRAIT_SCALE below for
+## the shared reasoning on why bust art needs a much smaller character scale
+## than the old full-body art did (and for the later retune when the source
+## sheet's crop proportions changed again). Lycith's bust canvas matches
+## Aurora's proportions (both cropped from the same 5x2 ChatGPT expression
+## sheet layout), so she uses the same scale — no separate slot-width
+## juggling needed anymore now that neither portrait is a wide action pose.
+const LYCITH_PORTRAIT_SCALE := 0.65
 
 ## Portrait name -> file, for Aurora specifically. Pick one per line with
 ## Dialogic's "Name (portrait): text" syntax, e.g. "Aurora (mad): Kessa...".
@@ -65,6 +69,11 @@ const AURORA_PORTRAITS := {
 	"sad": "aurora_sad.png",
 	"mad": "aurora_mad.png",
 	"shock": "aurora_shock.png",
+	"laugh": "aurora_laugh.png",
+	"stern": "aurora_stern.png",
+	"talk": "aurora_talk.png",
+	"embarrassed": "aurora_embarrassed.png",
+	"pensive": "aurora_pensive.png",
 }
 
 ## All names render in black now that the name label has its own readable
@@ -78,22 +87,78 @@ const NAME_COLOR := Color(0, 0, 0, 1)
 ## art so she keeps the default 1.0.
 const PLACEHOLDER_PORTRAIT_SCALE := 0.35
 
-## Dialogic's VN portrait containers only scale-to-fit the container HEIGHT
-## and let width overflow into neighboring slots uncropped (FIT_SCALE_HEIGHT
-## mode). Aurora's art is a wide action pose (long flowing cape/ponytail),
-## content bounding box ~93% of a 1024x1536 canvas, so at scale 1.0 she
-## renders ~480-540px wide. The "center" position's default 256px-wide slot
-## (1280 screen width / 5 equal positions) was nowhere near enough — her
-## overflow bled into whichever neighbor joined next to her (Doran on
-## intro/victory's "left", Kessa on "right") and got drawn over by that
-## neighbor's own portrait, visually chewing into her hair/cape on that
-## side. Fixed at the layout level instead of by shrinking her: "leftmost"
-## and "rightmost" (see vn_portrait_layer_tactical.tscn, used by
-## tactical_vn_style.tres) are unused by every timeline in this project, so
-## that reclaimed space now widens "center" to 640px — comfortably wider
-## than her ~540px worst case — while "left"/"right" (Doran/Kessa) keep
-## their original 256px width untouched. Scale 1.0 now fits with margin.
-const AURORA_PORTRAIT_SCALE := 1.0
+## Dialogic's VN portrait containers scale-to-fit the container HEIGHT
+## (FIT_SCALE_HEIGHT mode): rendered_height = container_height * character
+## scale, with width following the source image's aspect ratio. Container
+## height is the full 720px viewport height, so the old full-body art
+## (1024x1536, content ~93% of canvas) needed scale 1.0 just to read as
+## normal human proportions on screen (720px tall = the full screen height),
+## rendering ~480-540px wide — wide enough that "center"'s slot had to be
+## widened to 640px (see vn_portrait_layer_tactical.tscn) to keep her out of
+## her neighbors' slots.
+##
+## 2026-09-06: switched to bust (chest-up) portraits (324x486 canvas, cropped
+## from a ChatGPT-generated 5x2 expression sheet) — a full-screen-height bust
+## would be absurd (a giant floating face), so this needs a much smaller
+## scale than the old full-body 1.0. Went through several corrections against
+## real screenshots (this sandbox can't launch the game itself — `--headless`
+## only has the dummy renderer, null viewport texture; a real/windowed
+## display driver segfaults, no window station available here) before
+## landing on the real fix:
+## 1) 0.62 (Python mock, no screenshot yet) read as "way too low" in-engine.
+## 2) Recalibrated to 0.85 against a real screenshot's textbox-top — better
+##    filled, but then: too big, AND "on vois pas en dessous des épaules"
+##    (chest/armor hidden behind the textbox) despite visible spare room
+##    above. Root cause: both portrait containers are bottom-anchored to the
+##    FULL 720px container height, same as the textbox's own bottom, so the
+##    bottom ~28% of every bust (all the chest/emblem detail) rendered
+##    *behind* the opaque textbox by construction. Scale alone can only trade
+##    "hidden chest" for "empty headroom," never fix both.
+## 3) Tried `origin_offset = Vector2(0, -147)` on the containers to shift the
+##    bottom-anchor point up — verified this deserializes correctly in
+##    isolation, but the *live* game still showed offset=(0,0) (confirmed via
+##    a temporary debug dump of the actual runtime node — see git history).
+##    Root cause: Dialogic creates a fresh per-character container for each
+##    joined character by copying the template's settings
+##    (`subsystem_containers.gd`'s `copy_container_setup()`) — and that
+##    function copies `anchor_*`/`offset_*`/`size_mode`/`origin_anchor` but
+##    NOT `origin_offset`. Setting it on the template scene is silently
+##    thrown away for every actual joined character. This looks like a real
+##    gap in the Dialogic addon, not something fixable from project code.
+## Real fix: set `offset_bottom = -147.0` on the "left"/"center" containers
+## instead (alongside the existing `anchor_bottom = 1.0`) — `offset_bottom`
+## IS in `copy_container_setup()`'s copied list, confirmed by simulating that
+## exact copy in an isolated script. This shrinks the container's own height
+## to 720-147=573 (bottom edge pinned at the textbox's top, per
+## `box_size`/`box_margin_bottom` in tactical_vn_style.tres: 150px box +
+## 0 margin = textbox top at 720-150=570, matching the ~573-581 measured
+## across several screenshots), so `FIT_SCALE_HEIGHT`'s formula becomes
+## `rendered_height = 573 * character_scale` instead of `720 * character_scale`.
+##
+## 2026-09-06 (again): the source sheets got regenerated a second time with
+## visible black divider bars between cells (so slicing could go by the
+## divider instead of guessing where hair ends), which fixed real
+## bleed/misalignment bugs — but also changed the canvas from a tall
+## 324x486 crop (6-15% empty headroom above the hair on most expressions) to
+## a much squarer, fully tight 378x371 one (0% padding on every side, every
+## expression's content now touches all 4 edges). Since `rendered_height`
+## only depends on container height and scale (not the source image's own
+## proportions), the OLD scale (0.90, picked against the 324x486 canvas)
+## produced the same 515px render height as before — but because the new
+## canvas is proportionally much wider relative to its height, that same
+## height now maps to a much wider render (~524px, versus ~344px before),
+## overflowing badly past Lycith's 384px-wide "left" container and crowding
+## Aurora's 563px "center" one. Width (not height) is the binding constraint
+## now, so this was retuned against the container WIDTHS instead: at 0.65,
+## rendered width comes out to ~380px for both (same aspect ratio canvas),
+## which clears Lycith's tighter 384px container with a little margin and
+## sits comfortably inside Aurora's — verified with the same Python mock
+## technique (paste the actual shipped PNGs into a to-scale 1280x720 layout)
+## since this sandbox still can't launch the real game to check directly.
+## If the source art changes crop proportions again, re-derive from the
+## container width, not just the old height-based number — the two stopped
+## agreeing once the canvas aspect ratio changed this much.
+const AURORA_PORTRAIT_SCALE := 0.65
 
 ## How a non-speaking joined character is dimmed/shrunk relative to the one
 ## currently talking — the classic "other characters fade into the
@@ -136,6 +201,17 @@ static func register_all() -> void:
 	lycith.display_name = "Lycith"
 	lycith.color = NAME_COLOR
 	lycith.scale = LYCITH_PORTRAIT_SCALE
+	# She always joins at "left" (see every .dtl timeline) — mirrored so she
+	# faces right/inward toward whoever's in "center", instead of the source
+	# art's default left-facing pose (which would have her looking away from
+	# the conversation). Tried `mirrored = true` on the container node first,
+	# but that hits the exact same bug as origin_offset (see
+	# AURORA_PORTRAIT_SCALE's comment): copy_container_setup() doesn't copy
+	# it either, so it's silently lost for real joined characters. `mirror`
+	# on the DialogicCharacter resource itself isn't subject to that bug —
+	# it's read directly off the character, not off a duplicated container.
+	# If she ever joins somewhere other than "left" this would need revisiting.
+	lycith.mirror = true
 	for portrait_name in LYCITH_PORTRAITS:
 		lycith.add_portrait(portrait_name, PORTRAIT_DIR + LYCITH_PORTRAITS[portrait_name])
 	lycith.default_portrait = "neutral"
@@ -143,6 +219,25 @@ static func register_all() -> void:
 
 	Engine.set_meta("dch_directory", directory)
 	_registered = true
+
+## How long a character's first-ever appearance fade-in takes. Longer than
+## SPEAKER_DIM_DURATION (the ongoing speaking/not-speaking dim tween) since
+## this is a one-time "entrance," not a quick per-line highlight change.
+const APPEARANCE_FADE_DURATION := 0.4
+
+## Characters (by Dialogic identifier) that have already done their
+## first-appearance fade-in this timeline. Reset per timeline via
+## reset_appearance_tracking() — each new .dtl starts everyone hidden again,
+## since `join` in a timeline always follows a `leave --All--` that cleared
+## the previous scene's portraits.
+static var _appeared: Dictionary = {}
+
+## Call once before Dialogic.start() for each new timeline (CampaignFlow
+## does this in _play_dialogue) so newly-joined characters fade in on their
+## first line again, rather than staying "already seen" from a previous
+## timeline in the same playthrough.
+static func reset_appearance_tracking() -> void:
+	_appeared.clear()
 
 ## Safe to call repeatedly (e.g. once per CampaignFlow._play_dialogue) —
 ## only actually connects once. Must be called after Dialogic itself has
@@ -154,7 +249,24 @@ static func connect_speaker_dimming() -> void:
 	if _dimming_connected:
 		return
 	Dialogic.Text.speaker_updated.connect(_on_speaker_updated)
+	# `join_default` is "Instant In" (project.godot) — characters would
+	# otherwise appear immediately at full opacity the moment they join,
+	# before they've said anything. Hiding them here and fading in on their
+	# first line (below) is what makes "fade in when they enter the
+	# conversation" mean "when they first speak," not "when the join event
+	# in the timeline happens to run" — those aren't the same moment
+	# whenever a scene joins several characters up front before anyone talks
+	# (every .dtl in this project does exactly that).
+	Dialogic.Portraits.character_joined.connect(_on_character_joined)
 	_dimming_connected = true
+
+static func _on_character_joined(info: Dictionary) -> void:
+	var character: DialogicCharacter = info.get("character")
+	if character == null or _appeared.get(character.get_identifier(), false):
+		return
+	var node := Dialogic.Portraits.get_character_node(character)
+	if is_instance_valid(node):
+		node.modulate.a = 0.0
 
 static func _on_speaker_updated(speaker: DialogicCharacter) -> void:
 	for character in Dialogic.Portraits.get_joined_characters():
@@ -162,6 +274,17 @@ static func _on_speaker_updated(speaker: DialogicCharacter) -> void:
 		if not is_instance_valid(node):
 			continue
 		var speaking := character == speaker
+		var has_appeared: bool = _appeared.get(character.get_identifier(), false)
+		if not speaking and not has_appeared:
+			# Joined but hasn't spoken yet — stays hidden (set to alpha 0 by
+			# _on_character_joined) rather than being dimmed-but-visible.
+			continue
+		var first_appearance := speaking and not has_appeared
+		if first_appearance:
+			_appeared[character.get_identifier()] = true
+		var target_modulate := SPEAKING_MODULATE if speaking else NOT_SPEAKING_MODULATE
+		var target_scale := SPEAKING_SCALE if speaking else NOT_SPEAKING_SCALE
+		var duration := APPEARANCE_FADE_DURATION if first_appearance else SPEAKER_DIM_DURATION
 		var tween := node.create_tween().set_parallel(true)
-		tween.tween_property(node, "modulate", SPEAKING_MODULATE if speaking else NOT_SPEAKING_MODULATE, SPEAKER_DIM_DURATION)
-		tween.tween_property(node, "scale", Vector2.ONE * (SPEAKING_SCALE if speaking else NOT_SPEAKING_SCALE), SPEAKER_DIM_DURATION)
+		tween.tween_property(node, "modulate", target_modulate, duration)
+		tween.tween_property(node, "scale", Vector2.ONE * target_scale, duration)

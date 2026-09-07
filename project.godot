@@ -34,6 +34,8 @@ layout/style_directory={
 "": "res://dialogue/style/tactical_vn_style.tres"
 }
 layout/default_style="res://dialogue/style/tactical_vn_style.tres"
+animations/join_default="Instant In"
+animations/leave_default="Fade Out"
 
 [display]
 

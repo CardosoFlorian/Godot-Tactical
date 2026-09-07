@@ -67,6 +67,7 @@ func _play_dialogue(timeline_path: String) -> void:
 	# autoload _ready() — CampaignFlow is registered before Dialogic in
 	# project.godot. Safe to call every time; only connects once.
 	DialogueCharacters.connect_speaker_dimming()
+	DialogueCharacters.reset_appearance_tracking()
 	Dialogic.start(timeline_path)
 
 func _on_dialogue_finished() -> void:
