@@ -115,6 +115,14 @@ func play_attack_animation(target_global_pos: Vector2 = Vector2.ZERO, did_hit: b
 			_rig.attack_contact.connect(attack_contact.emit)
 		await _rig.play_attack(target_global_pos, did_hit, weapon)
 
+## No-op if this unit's rig doesn't have a heal cast (every current unit
+## except Martin — see MartinBattleSprite.play_heal). Battle.execute_heal
+## awaits this before applying the HP change, same "animation plays, then
+## the actual game-state change lands" ordering play_attack_animation uses.
+func play_heal_animation() -> void:
+	if _rig and _rig.has_method("play_heal"):
+		await _rig.play_heal()
+
 func set_selected(selected: bool) -> void:
 	selection_ring.visible = selected
 

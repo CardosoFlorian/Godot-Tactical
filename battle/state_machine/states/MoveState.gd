@@ -15,20 +15,21 @@ func enter(_previous_state_name: String = "") -> void:
 	battle.grid.clear_highlight()
 	battle.show_unit_range(unit, battle.move_range)
 	SignalBus.move_range_shown.emit(battle.move_range)
-	battle.ui.show_move_menu(battle.has_attackable_target(unit))
+	var weapon_can_heal := battle.weapon_can_heal(unit)
+	battle.ui.show_move_menu(battle.has_attackable_target(unit), weapon_can_heal, weapon_can_heal and battle.has_healable_target(unit))
 
 func exit() -> void:
 	battle.ui.hide_action_menu()
 
 ## Wait is always available here (skipping a unit's turn in place doesn't
-## need a move); Attack only when ActionMenu.show_for_move actually enabled
-## it — i.e. the selected unit can already hit something from where it's
-## standing. Either way this saves the "click my own tile to confirm not
-## moving, THEN click Attack/Wait" detour: Wait just ends the unit's turn
-## outright, and Attack confirms a no-op "move" onto its own tile (same
-## mechanism handle_unit_clicked below uses when you click your own unit)
-## so has_moved flips true, then jumps straight to targeting instead of
-## bouncing through "action_menu" just to click Attack again.
+## need a move); Attack/Heal only when ActionMenu.show_for_move actually
+## enabled them — i.e. the selected unit can already hit/heal something
+## from where it's standing. Either way this saves the "click my own tile
+## to confirm not moving, THEN click Attack/Heal/Wait" detour: Wait just
+## ends the unit's turn outright, and Attack/Heal confirm a no-op "move"
+## onto its own tile (same mechanism handle_unit_clicked below uses when
+## you click your own unit) so has_moved flips true, then jumps straight to
+## targeting instead of bouncing through "action_menu" just to click again.
 func handle_action_chosen(action_name: String) -> void:
 	var unit := battle.selected_unit
 	match action_name:
@@ -40,6 +41,11 @@ func handle_action_chosen(action_name: String) -> void:
 				return
 			await _move_to(unit.grid_pos)
 			state_machine.change_state("targeting")
+		"heal":
+			if not battle.has_healable_target(unit):
+				return
+			await _move_to(unit.grid_pos)
+			state_machine.change_state("heal_targeting")
 
 func handle_tile_clicked(pos: Vector2i) -> void:
 	if not battle.move_range.has(pos):

@@ -7,6 +7,7 @@ extends CanvasLayer
 ## things like "can this unit attack from here" that no one else needs.
 
 signal attack_pressed
+signal heal_pressed
 signal wait_pressed
 signal promote_pressed
 signal cancel_pressed
@@ -22,6 +23,7 @@ func _ready() -> void:
 	hover_info_panel.hide_panel()
 	action_menu.hide()
 	action_menu.attack_pressed.connect(func(): attack_pressed.emit())
+	action_menu.heal_pressed.connect(func(): heal_pressed.emit())
 	action_menu.wait_pressed.connect(func(): wait_pressed.emit())
 	action_menu.promote_pressed.connect(func(): promote_pressed.emit())
 	action_menu.cancel_pressed.connect(func(): cancel_pressed.emit())
@@ -40,14 +42,18 @@ func show_hover_unit(unit_data: UnitData) -> void:
 func hide_hover_unit() -> void:
 	hover_info_panel.hide_panel()
 
-## Move phase: same panel as the action menu, but only Cancel (and Attack,
-## when `can_attack` is true) is clickable — Wait/Promote show greyed out
-## rather than disappearing, so the layout doesn't jump between phases.
-func show_move_menu(can_attack: bool = false) -> void:
-	action_menu.show_for_move(can_attack)
+## Move phase: same panel as the action menu, but only Cancel (and
+## Attack/Heal, when enabled) is clickable — Wait shows enabled too,
+## Promote hidden — so the layout doesn't jump between phases.
+func show_move_menu(can_attack: bool = false, weapon_can_heal: bool = false, can_heal: bool = false) -> void:
+	action_menu.show_for_move(can_attack, weapon_can_heal, can_heal)
 
-func show_action_menu(_unit, can_attack: bool, can_promote: bool = false) -> void:
-	action_menu.show_for_action(can_attack, can_promote)
+## `weapon_can_heal`: whether the equipped weapon supports healing at all
+## (controls whether the Heal button shows up on the menu — see
+## ActionMenuState). `can_heal`: whether there's actually a target in range
+## right now (controls whether it's clickable, same as `can_attack`).
+func show_action_menu(_unit, can_attack: bool, weapon_can_heal: bool = false, can_heal: bool = false, can_promote: bool = false) -> void:
+	action_menu.show_for_action(can_attack, weapon_can_heal, can_heal, can_promote)
 
 func hide_action_menu() -> void:
 	action_menu.hide()

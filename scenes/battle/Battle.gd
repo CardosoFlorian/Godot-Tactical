@@ -7,6 +7,7 @@ extends Node2D
 
 const UNIT_SCENE := preload("res://scenes/battle/Unit.tscn")
 const IMPACT_EFFECT_SCENE := preload("res://scenes/battle/effects/ImpactEffect.tscn")
+const HEAL_EFFECT_SCENE := preload("res://scenes/battle/effects/HealEffect.tscn")
 
 # Combat scene staging (execute_attack / _play_combat_scene): how far the
 # camera zooms in and how far each unit steps toward the other for the
@@ -31,6 +32,7 @@ const BUMP_DISTANCE := 6.0
 @onready var state_machine: BattleStateMachine = $BattleStateMachine
 @onready var camera: Camera2D = $Camera2D
 @onready var combat_stats: CombatStatsHUD = $CombatStatsHUD
+@onready var heal_preview: HealPreviewPanel = $HealPreviewLayer/HealPreviewPanel
 
 var player_units: Array[Unit] = []
 var enemy_units: Array[Unit] = []
@@ -46,11 +48,13 @@ var rng := RandomNumberGenerator.new()
 
 var _hovered_unit: Unit = null
 var _preview_target: Unit = null
+var _heal_preview_target: Unit = null
 var _combat_scene_active: bool = false
 
 func _ready() -> void:
 	rng.randomize()
 	ui.attack_pressed.connect(func(): state_machine.handle_action_chosen("attack"))
+	ui.heal_pressed.connect(func(): state_machine.handle_action_chosen("heal"))
 	ui.wait_pressed.connect(func(): state_machine.handle_action_chosen("wait"))
 	ui.promote_pressed.connect(func(): state_machine.handle_action_chosen("promote"))
 	ui.cancel_pressed.connect(func(): state_machine.handle_cancel())
@@ -74,11 +78,23 @@ func _process(_delta: float) -> void:
 		if _hovered_unit:
 			ui.hide_hover_unit()
 			_hovered_unit = null
+		if _heal_preview_target:
+			_clear_heal_preview()
 		_update_targeting_hover()
 		return
 
 	if _preview_target:
 		_clear_combat_preview()
+
+	if state_machine.current_state_name == "heal_targeting":
+		if _hovered_unit:
+			ui.hide_hover_unit()
+			_hovered_unit = null
+		_update_heal_hover()
+		return
+
+	if _heal_preview_target:
+		_clear_heal_preview()
 
 	if state_machine.current_state_name != "unit_select":
 		if _hovered_unit:
@@ -157,6 +173,30 @@ func _display_combat_stats(attacker: Unit, defender: Unit, stats: Dictionary, sh
 func _clear_combat_preview() -> void:
 	_preview_target = null
 	combat_stats.hide_combat()
+
+## Previews the heal panel (see HealPreviewPanel) when hovering a valid heal
+## target during HealState — mirrors _update_targeting_hover, but there's no
+## click-through combat scene to worry about landing mid-preview: the panel
+## only ever shows current HP + the flat heal, nothing rolls.
+func _update_heal_hover() -> void:
+	var heal_state := state_machine.current_state as HealState
+	if heal_state == null:
+		return
+	var local_pos: Vector2 = grid.to_local(get_global_mouse_position())
+	var pos := grid.world_to_grid(local_pos)
+	var occupant: Unit = grid.get_occupant(pos) if grid.is_in_bounds(pos) else null
+	if occupant == _heal_preview_target:
+		return
+	_heal_preview_target = occupant
+	if occupant and heal_state.valid_targets.has(occupant):
+		var weapon := selected_unit.unit_data.get_equipped_weapon()
+		heal_preview.show_preview(occupant.unit_data, weapon.heal_amount)
+	else:
+		_clear_heal_preview()
+
+func _clear_heal_preview() -> void:
+	_heal_preview_target = null
+	heal_preview.hide_preview()
 
 ## Move range in blue is the base; attack range is only drawn red on the
 ## tiles it adds BEYOND the move range (the "can't stand here but could
@@ -266,6 +306,63 @@ func get_attackable_targets_from(from_pos: Vector2i, unit: Unit) -> Array[Unit]:
 
 func has_attackable_target(unit: Unit) -> bool:
 	return not get_attackable_targets(unit).is_empty()
+
+## Whether `unit`'s currently equipped weapon can heal at all (see
+## WeaponData.can_heal) — used to decide whether the Heal button should be
+## on the menu in the first place, independent of whether there's actually
+## a valid target in range right now (see has_healable_target below).
+func weapon_can_heal(unit: Unit) -> bool:
+	var weapon := unit.unit_data.get_equipped_weapon()
+	return weapon != null and weapon.can_heal()
+
+## Allies (self included — targeting yourself is a valid choice) within the
+## healer's equipped weapon's range who aren't already at full HP. Empty if
+## the weapon can't heal at all.
+func get_healable_targets(unit: Unit) -> Array[Unit]:
+	var weapon := unit.unit_data.get_equipped_weapon()
+	if weapon == null or not weapon.can_heal():
+		return []
+	var tiles := grid.get_tiles_in_range(unit.grid_pos, weapon.min_range, weapon.max_range)
+	var allies := player_units if unit.unit_data.team == UnitData.Team.PLAYER else enemy_units
+	var result: Array[Unit] = []
+	for tile in tiles:
+		var occupant := grid.get_occupant(tile)
+		if occupant and allies.has(occupant) and occupant.unit_data.get_current_hp() < occupant.unit_data.get_max_hp():
+			result.append(occupant)
+	return result
+
+func has_healable_target(unit: Unit) -> bool:
+	return not get_healable_targets(unit).is_empty()
+
+## Resolves a heal: plays the healer's cast animation (a no-op for a rig
+## that doesn't have one, e.g. anyone but Martin — see
+## Unit.play_heal_animation), then restores `healer`'s equipped weapon's
+## heal_amount to `target`'s current HP (clamped at max) and consumes the
+## healer's turn. No combat-scene camera staging (unlike execute_attack) —
+## just the animation plus a floating "+N" over the target, reusing
+## _show_strike_message's existing convention. `target` can be `healer`
+## itself (self-heal is allowed — see get_healable_targets).
+func execute_heal(healer: Unit, target: Unit) -> void:
+	var weapon := healer.unit_data.get_equipped_weapon()
+	var amount: int = weapon.heal_amount if weapon else 0
+	await healer.play_heal_animation()
+	var new_hp: int = mini(target.unit_data.get_max_hp(), target.unit_data.get_current_hp() + amount)
+	target.unit_data.set_current_hp(new_hp)
+	_play_heal_effect(target)
+	_show_strike_message(target, "+%d" % amount, Color(0.4, 1.0, 0.4))
+	healer.has_acted = true
+
+## Spawns the green sparkle burst (see HealEffect) on `target` the instant
+## the heal actually lands — mirrors _play_impact_effect's placement
+## (get_impact_point, not raw global_position, so it reads centered on the
+## body rather than at the feet).
+func _play_heal_effect(target: Unit) -> void:
+	if not is_instance_valid(target):
+		return
+	var effect: HealEffect = HEAL_EFFECT_SCENE.instantiate()
+	add_child(effect)
+	effect.global_position = target.get_impact_point()
+	effect.play()
 
 ## Snaps `unit` back to selected_unit_start_pos and clears has_moved, so
 ## ActionMenuState.handle_cancel can send the player back to "move" instead

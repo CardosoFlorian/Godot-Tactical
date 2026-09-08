@@ -18,6 +18,7 @@ func setup(p_battle: Battle) -> void:
 		"move": MoveState.new(battle, self),
 		"action_menu": ActionMenuState.new(battle, self),
 		"targeting": TargetingState.new(battle, self),
+		"heal_targeting": HealState.new(battle, self),
 		"enemy_phase": EnemyPhaseState.new(battle, self),
 		"game_over": BattleState.new(battle, self),
 	}

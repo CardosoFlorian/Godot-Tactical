@@ -16,4 +16,10 @@ texture_filter = 3
 scale = Vector2(0.079, 0.079)
 offset = Vector2(-2, -31)
 
+[node name="HealSprite" type="AnimatedSprite2D" parent="."]
+visible = false
+texture_filter = 3
+scale = Vector2(0.077, 0.077)
+offset = Vector2(-2, -32)
+
 [node name="CastSound" type="AudioStreamPlayer2D" parent="."]

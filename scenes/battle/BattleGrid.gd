@@ -16,6 +16,7 @@ const DIRECTIONS: Array[Vector2i] = [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, 
 ## Highlight tile atlas coords in the highlight TileSet.
 const HIGHLIGHT_MOVE := Vector2i(0, 0)
 const HIGHLIGHT_ATTACK := Vector2i(1, 0)
+const HIGHLIGHT_HEAL := Vector2i(2, 0)
 
 ## Ground tile atlas coords in the terrain TileSet (always painted on
 ## terrain_layer, everywhere). Anything else (tree, wall...) goes on

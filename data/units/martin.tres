@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://resources/defs/unit_data.gd" id="1"]
 [ext_resource type="Resource" path="res://data/classes/mage.tres" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" path="res://assets/placeholder/units/player_tome.png" id="4"]
 [ext_resource type="Texture2D" path="res://assets/placeholder/portraits/martin/neutral.png" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/battle/units/MartinBattleSprite.tscn" id="6"]
+[ext_resource type="Resource" path="res://data/weapons/heal_tome.tres" id="7"]
 
 [resource]
 script = ExtResource("1")
@@ -15,8 +16,8 @@ character_class = ExtResource("2")
 level = 1
 team = 0
 permadeath = true
-inventory = Array[WeaponData]([ExtResource("3")])
-equipped_index = 0
+inventory = Array[WeaponData]([ExtResource("3"), ExtResource("7")])
+equipped_index = 1
 portrait = ExtResource("5")
 battle_sprite = ExtResource("4")
 rigged_battle_sprite = ExtResource("6")
