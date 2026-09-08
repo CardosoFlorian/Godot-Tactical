@@ -12,7 +12,7 @@
 [ext_resource type="Resource" path="res://data/units/rurik.tres" id="9"]
 [ext_resource type="Resource" path="res://data/units/ilsa.tres" id="10"]
 [ext_resource type="Script" uid="uid://w8a4jtqcmyub" path="res://resources/defs/unit_spawn_data.gd" id="11"]
-[ext_resource type="Resource" path="res://data/units/elyn.tres" id="13"]
+[ext_resource type="Resource" path="res://data/units/martin.tres" id="13"]
 
 [sub_resource type="Resource" id="1"]
 script = ExtResource("11")

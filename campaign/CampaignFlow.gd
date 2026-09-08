@@ -13,7 +13,7 @@ const ROSTER_UNIT_PATHS := [
 	"res://data/units/aurora.tres",
 	"res://data/units/lycith.tres",
 	"res://data/units/kessa.tres",
-	"res://data/units/elyn.tres",
+	"res://data/units/martin.tres",
 ]
 
 var _current_battle: Battle

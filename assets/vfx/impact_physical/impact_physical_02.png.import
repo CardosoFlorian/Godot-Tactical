@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c3gbrp0sd8dkx"
-path="res://.godot/imported/elyn.png-00bfd45ce8b0a8335ec5303ab47296c1.ctex"
+uid="uid://bd4y11ss5ne6f"
+path="res://.godot/imported/impact_physical_02.png-90e9ff9eb8a641bbb3a7aa8cdb6df18b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholder/portraits/elyn.png"
-dest_files=["res://.godot/imported/elyn.png-00bfd45ce8b0a8335ec5303ab47296c1.ctex"]
+source_file="res://assets/vfx/impact_physical/impact_physical_02.png"
+dest_files=["res://.godot/imported/impact_physical_02.png-90e9ff9eb8a641bbb3a7aa8cdb6df18b.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

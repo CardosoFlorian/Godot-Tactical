@@ -6,6 +6,14 @@ extends Node2D
 
 const MOVE_SPEED := 220.0  # pixels/sec along the confirmed path
 
+## global_position sits at the unit's feet (tile-center, per
+## BattleGrid.grid_to_world) — roughly chest-height above that instead, so
+## anything aimed "at" this unit (impact VFX, a projectile's destination)
+## reads as centered on their body instead of landing down at their feet.
+## First-pass guess, same as every other scale/offset in this project's art
+## pipeline — retune once seen against a real screenshot.
+const IMPACT_POINT_OFFSET := Vector2(0, -18)
+
 @export var unit_data: UnitData
 
 var grid_pos: Vector2i = Vector2i.ZERO
@@ -25,6 +33,14 @@ var facing_left: bool = true:
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var selection_ring: Node2D = $SelectionRing
+
+## Forwarded from the rig's own `attack_contact` (Aurora/Lycith-style melee
+## rigs only — see AuroraBattleSprite.ATTACK_CONTACT_FRAME_INDEX) so
+## Battle.gd can time the hit VFX/SFX off the actual blade-lands frame
+## instead of the swing's full finish. Never fires for a rig that doesn't
+## have this signal (Martin's ranged rig plays its own impact effect via
+## Projectile on arrival instead).
+signal attack_contact
 
 # Set once, lazily, if unit_data.rigged_battle_sprite is present — see
 # _refresh_sprite. Most units don't have one and just use `sprite` above.
@@ -72,10 +88,32 @@ func _apply_facing() -> void:
 	else:
 		sprite.flip_h = not facing_left
 
+## See IMPACT_POINT_OFFSET — the point anything aimed at this unit (impact
+## VFX, a projectile's destination) should target, instead of raw
+## global_position which sits down at their feet.
+func get_impact_point() -> Vector2:
+	return global_position + IMPACT_POINT_OFFSET
+
+## Whether this unit's rig can tell Battle.gd exactly when a swing "lands"
+## (AuroraBattleSprite/LycithBattleSprite-style, frame-synced attack_contact
+## — see ATTACK_CONTACT_FRAME_INDEX on either). False for a plain sprite
+## (every current enemy, and Kessa, who don't have a rigged_battle_sprite
+## yet) — Battle.gd falls back to playing the hit VFX/SFX at the bump-lunge
+## peak instead, since there's no real swing animation to sync to.
+func supports_attack_contact() -> bool:
+	return _rig != null and _rig.has_signal("attack_contact")
+
 ## No-op if this unit has no rigged battle sprite (plain static sprite).
-func play_attack_animation() -> void:
+## `target_global_pos` is only meaningful to a ranged rig (e.g. Martin's
+## fireball needs to know where to fly); `did_hit`/`weapon` are only
+## meaningful to a rig that plays its own impact effect on arrival (a
+## projectile) rather than Battle.gd playing one directly for a melee swing
+## — melee rigs accept and ignore all three.
+func play_attack_animation(target_global_pos: Vector2 = Vector2.ZERO, did_hit: bool = true, weapon: WeaponData = null) -> void:
 	if _rig and _rig.has_method("play_attack"):
-		await _rig.play_attack()
+		if _rig.has_signal("attack_contact") and not _rig.attack_contact.is_connected(attack_contact.emit):
+			_rig.attack_contact.connect(attack_contact.emit)
+		await _rig.play_attack(target_global_pos, did_hit, weapon)
 
 func set_selected(selected: bool) -> void:
 	selection_ring.visible = selected

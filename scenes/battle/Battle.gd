@@ -6,6 +6,7 @@ extends Node2D
 ## BattleState reacts to.
 
 const UNIT_SCENE := preload("res://scenes/battle/Unit.tscn")
+const IMPACT_EFFECT_SCENE := preload("res://scenes/battle/effects/ImpactEffect.tscn")
 
 # Combat scene staging (execute_attack / _play_combat_scene): how far the
 # camera zooms in and how far each unit steps toward the other for the
@@ -335,6 +336,13 @@ func _compute_combat_stats(attacker: Unit, defender: Unit) -> Dictionary:
 		"defender_can_counter": defender_can_counter,
 	}
 
+## Bow/tome users don't close the distance for a clash the way melee weapons
+## do — used both to skip the initial stage-approach step and each strike's
+## forward lunge for whichever side is equipped this way.
+func _is_ranged(unit: Unit) -> bool:
+	var weapon := unit.unit_data.get_equipped_weapon()
+	return weapon != null and weapon.weapon_type in [WeaponData.WeaponType.BOW, WeaponData.WeaponType.TOME]
+
 ## Zooms the camera in on the pair and steps them toward each other, shows
 ## the stat panels, plays each strike from `log` in order (real swing
 ## animation for a rigged unit like Aurora, a small forward-and-back nudge
@@ -360,11 +368,19 @@ func _play_combat_scene(attacker: Unit, defender: Unit, log: Array, stats: Dicti
 		attacker.facing_left = true
 		defender.facing_left = false
 
+	# Ranged units (bow/tome) stand their ground for the clash — closing the
+	# gap only makes sense for melee weapons. Ilsa-with-a-tome vs. a swordsman
+	# still has the swordsman step in; the tome user never does.
+	var attacker_ranged := _is_ranged(attacker)
+	var defender_ranged := _is_ranged(defender)
+
 	var stage_tween := create_tween().set_parallel(true)
 	stage_tween.tween_property(camera, "position", (attacker_start + defender_start) / 2.0, STAGE_TWEEN_DURATION)
 	stage_tween.tween_property(camera, "zoom", COMBAT_SCENE_ZOOM, STAGE_TWEEN_DURATION)
-	stage_tween.tween_property(attacker, "position", attacker_start + approach * APPROACH_FRACTION, STAGE_TWEEN_DURATION)
-	stage_tween.tween_property(defender, "position", defender_start - approach * APPROACH_FRACTION, STAGE_TWEEN_DURATION)
+	if not attacker_ranged:
+		stage_tween.tween_property(attacker, "position", attacker_start + approach * APPROACH_FRACTION, STAGE_TWEEN_DURATION)
+	if not defender_ranged:
+		stage_tween.tween_property(defender, "position", defender_start - approach * APPROACH_FRACTION, STAGE_TWEEN_DURATION)
 
 	# No ghost preview here: the strikes are about to actually land, so both
 	# bars should just start at real current HP and count down for real as
@@ -378,25 +394,58 @@ func _play_combat_scene(attacker: Unit, defender: Unit, log: Array, stats: Dicti
 
 	for strike in log:
 		var source: Unit = attacker if strike["source"] == attacker.unit_data else defender
+		var target: Unit = attacker if strike["target"] == attacker.unit_data else defender
 		if not is_instance_valid(source):
 			continue
 		await get_tree().create_timer(PRE_STRIKE_DELAY).timeout
-		var bump_dir := approach.normalized() if source == attacker else -approach.normalized()
-		var bump_start := source.position
-		# Lunge forward and HOLD there for the whole swing (rather than
-		# bouncing back on its own fixed timer) so a rigged unit's ~1s
-		# animation doesn't finish standing back at rest — the two used to
-		# run on unrelated clocks and looked disconnected.
-		var lunge_out := create_tween()
-		lunge_out.tween_property(source, "position", bump_start + bump_dir * BUMP_DISTANCE, 0.1)
-		await lunge_out.finished
-		await source.play_attack_animation()
-		var lunge_back := create_tween()
-		lunge_back.tween_property(source, "position", bump_start, 0.15)
-		await lunge_back.finished
+		var source_weapon := source.unit_data.get_equipped_weapon()
+		if _is_ranged(source):
+			# No forward lunge for a ranged strike — casting/shooting in
+			# place, the projectile (spawned by the rig itself, synced to a
+			# frame in its own attack animation) is what covers the distance
+			# AND plays the impact sound/particles on arrival — doing it here
+			# too would double up and land before the projectile even gets
+			# there.
+			await source.play_attack_animation(target.get_impact_point(), strike["hit"], source_weapon)
+		else:
+			var bump_dir := approach.normalized() if source == attacker else -approach.normalized()
+			var bump_start := source.position
+			# Lunge forward and HOLD there for the whole swing (rather than
+			# bouncing back on its own fixed timer) so a rigged unit's ~1s
+			# animation doesn't finish standing back at rest — the two used to
+			# run on unrelated clocks and looked disconnected.
+			var lunge_out := create_tween()
+			lunge_out.tween_property(source, "position", bump_start + bump_dir * BUMP_DISTANCE, 0.1)
+			await lunge_out.finished
+			# Play the impact VFX/SFX right when the blade actually lands
+			# (source.attack_contact, forwarded from the rig's own
+			# ATTACK_CONTACT_FRAME_INDEX — see AuroraBattleSprite), not after
+			# the whole swing including recovery/follow-through has finished
+			# playing, which read as noticeably late. A plain-sprite source
+			# (every current enemy, and Kessa — no rigged_battle_sprite yet,
+			# so play_attack_animation is a no-op and attack_contact would
+			# never fire) instead gets it right here, at the bump's forward
+			# peak — the only "contact" moment a non-rigged unit actually has.
+			var did_hit: bool = strike["hit"]
+			var contact_target := target
+			var contact_weapon := source_weapon
+			if source.supports_attack_contact():
+				var on_contact := func() -> void:
+					if did_hit:
+						_play_impact_effect(contact_target, contact_weapon)
+				source.attack_contact.connect(on_contact, CONNECT_ONE_SHOT)
+				await source.play_attack_animation(target.get_impact_point(), strike["hit"], source_weapon)
+				if source.attack_contact.is_connected(on_contact):
+					source.attack_contact.disconnect(on_contact)
+			else:
+				if did_hit:
+					_play_impact_effect(contact_target, contact_weapon)
+				await source.play_attack_animation(target.get_impact_point(), strike["hit"], source_weapon)
+			var lunge_back := create_tween()
+			lunge_back.tween_property(source, "position", bump_start, 0.15)
+			await lunge_back.finished
 		combat_stats.update_hp(strike["target"], strike["target_hp_after"])
 
-		var target: Unit = attacker if strike["target"] == attacker.unit_data else defender
 		if not strike["hit"]:
 			_show_strike_message(target, "Rate !", Color.WHITE)
 		elif strike["crit"]:
@@ -416,6 +465,19 @@ func _play_combat_scene(attacker: Unit, defender: Unit, log: Array, stats: Dicti
 		unstage_tween.tween_property(defender, "position", defender_start, STAGE_TWEEN_DURATION)
 	await unstage_tween.finished
 	_combat_scene_active = false
+
+## Spawns a one-shot hit-spark/sound burst at `target`'s position, weapon-typed
+## via `weapon` (metal clang, wood thock, or a magic chime — see
+## ImpactEffect.play). Only ever called for a strike that actually connected;
+## a ranged source's own impact instead comes from Projectile on arrival —
+## see the `_is_ranged` branch in _play_combat_scene.
+func _play_impact_effect(target: Unit, weapon: WeaponData) -> void:
+	if not is_instance_valid(target):
+		return
+	var effect: ImpactEffect = IMPACT_EFFECT_SCENE.instantiate()
+	add_child(effect)
+	effect.global_position = target.get_impact_point()
+	effect.play(weapon)
 
 ## Brief floating text over `target`: "Rate !" on a miss, "-N" on an
 ## ordinary hit, "Critique ! -N" on a crit — so damage and the two special

@@ -12,6 +12,7 @@ corner_radius_bottom_left = 2
 
 [node name="CombatStatsPanel" type="PanelContainer"]
 custom_minimum_size = Vector2(420, 0)
+mouse_filter = 2
 theme_override_styles/panel = ExtResource("2")
 script = ExtResource("1")
 
@@ -22,6 +23,7 @@ theme_override_constants/separation = 6
 [node name="NameBanner" type="Panel" parent="VBox"]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
+mouse_filter = 2
 
 [node name="NameLabel" type="Label" parent="VBox/NameBanner"]
 layout_mode = 1

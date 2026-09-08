@@ -71,10 +71,11 @@ const LYCITH_PORTRAIT_SCALE := 0.55
 ## Lives in its own subfolder (assets/placeholder/portraits/aurora/) rather
 ## than flat in PORTRAIT_DIR — 2026-09-07 reorg, requested once there were 10
 ## expressions per character (20 files total between her and Lycith) making
-## the flat portraits folder hard to search. Only the two named characters
-## with real per-expression art got subfolders; ROSTER's single-portrait
-## characters (Kessa, Elyn, enemies) stay flat in PORTRAIT_DIR — a single
-## file per character isn't the thing that was hard to find.
+## the flat portraits folder hard to search. Only the named characters with
+## real per-expression art got subfolders (now three — see MARTIN_PORTRAITS
+## below); ROSTER's single-portrait characters (Kessa, enemies) stay flat in
+## PORTRAIT_DIR — a single file per character isn't the thing that was hard
+## to find.
 const AURORA_PORTRAITS := {
 	"neutral": "aurora/neutral.png",
 	"happy": "aurora/happy.png",

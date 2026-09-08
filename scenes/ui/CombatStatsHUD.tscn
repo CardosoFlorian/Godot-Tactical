@@ -52,6 +52,7 @@ offset_right = 110.0
 offset_bottom = -47.0
 grow_horizontal = 2
 grow_vertical = 0
+mouse_filter = 2
 theme_override_styles/panel = SubResource("ArrowsBackdrop")
 
 [node name="ArrowsVBox" type="VBoxContainer" parent="ArrowsCenter"]
