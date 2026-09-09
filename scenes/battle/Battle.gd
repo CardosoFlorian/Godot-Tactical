@@ -8,6 +8,14 @@ extends Node2D
 const UNIT_SCENE := preload("res://scenes/battle/Unit.tscn")
 const IMPACT_EFFECT_SCENE := preload("res://scenes/battle/effects/ImpactEffect.tscn")
 const HEAL_EFFECT_SCENE := preload("res://scenes/battle/effects/HealEffect.tscn")
+## Whoosh sound for a missed strike — weapon-agnostic (same sound for melee/
+## bow/tome misses), unlike the weapon-typed impact sounds a landed hit
+## uses, since nothing actually connects on a miss for a weapon type to
+## color. Played via _play_miss_sound, not a full ImpactEffect (no particle
+## burst — a miss has nothing to show a burst at).
+const SOUND_MISS := preload("res://assets/audio/sfx/miss.mp3")
+## Plays the instant the crit cut-in portrait appears — see _play_crit_portrait.
+const SOUND_CRIT_PORTRAIT := preload("res://assets/audio/sfx/crit_portrait.mp3")
 
 # Combat scene staging (execute_attack / _play_combat_scene): how far the
 # camera zooms in and how far each unit steps toward the other for the
@@ -25,6 +33,62 @@ const END_HOLD_DURATION := 0.5
 # doesn't look like nothing happened.
 const BUMP_DISTANCE := 6.0
 
+# Crit "hit-stop": a brief global slowdown + gray screen flash, only on a
+# critical hit landing — see _play_crit_hitstop. HITSTOP_DURATION is REAL
+# seconds (the timer that restores time_scale explicitly ignores time_scale
+# itself — see create_timer's 4th arg — otherwise a slowed time_scale would
+# make its own restore timer take longer to fire, stretching the freeze).
+## Less extreme than the first pass (0.12) — a near-total freeze left the
+## crit burst's own animation (which has no way to ignore Engine.time_scale,
+## unlike the flash tween below) barely advancing during the dip, so almost
+## the whole thing played in a rush right as time_scale reset. 0.3 still
+## reads as a clear slowdown but gives the burst room to actually animate
+## through the freeze instead of racing to catch up after it.
+const HITSTOP_TIME_SCALE := 0.3
+const HITSTOP_DURATION := 0.2
+const CRIT_FLASH_PEAK_ALPHA := 0.45
+# Real seconds — the flash tween explicitly ignores time_scale (see
+# _play_crit_hitstop), so these aren't stretched/compressed by the
+# slowdown the way an ordinary tween sharing the same window would be.
+const CRIT_FLASH_IN_DURATION := 0.05
+const CRIT_FLASH_OUT_DURATION := 0.35
+
+## Fire Emblem-style crit cut-in: a horizontal letterbox band (not the full
+## screen — first pass did that and the user rejected it, see the fix note
+## below) showing a TIGHT crop of just the attacker's eyes/brow from their
+## "mad" VN expression portrait (see DialogueCharacters' *_PORTRAITS dicts —
+## reused as-is rather than commissioning dedicated crit art), held briefly,
+## then removed before the normal impact effect/hit-stop plays. Only the 4
+## named companions have VN portraits at all — anything else (every current
+## enemy) has no entry here and skips the cut-in entirely, falling back to
+## just the flash+hit-stop. "mad" specifically (not each character's own
+## default), per the user's own call: a character's default/neutral
+## expression can read as cheerful (e.g. Martin's), which looks wrong for a
+## critical hit.
+##
+## `crop` is a Rect2 in the SOURCE image's own pixel coordinates (each
+## portrait has a different canvas size/composition, so this can't be one
+## shared rect) — found by eye, cropping around each portrait's eyes/brow
+## the same tight way the real Fire Emblem cut-in does. Applied via an
+## AtlasTexture (region) rather than TextureRect's own stretch/expand modes,
+## which only scale the WHOLE image, not crop a sub-region of it.
+## Each rect is centered vertically on that character's own eye line (found
+## with a Y-coordinate grid overlaid on the source portrait, not eyeballed
+## off a thumbnail) — Martin's face sits much higher in his canvas than the
+## other three (his eyes are around y=95 of a 390-tall image, vs. Kessa's
+## ~180 of 449), so reusing one character's rect shape on another would NOT
+## center correctly; each needed its own independent placement.
+const CRIT_PORTRAIT_DATA := {
+	"aurora": {"path": "res://assets/placeholder/portraits/aurora/mad.png", "crop": Rect2(30, 88, 310, 105)},
+	"lycith": {"path": "res://assets/placeholder/portraits/lycith/mad.png", "crop": Rect2(30, 95, 310, 110)},
+	"martin": {"path": "res://assets/placeholder/portraits/martin/mad.png", "crop": Rect2(60, 50, 260, 90)},
+	"kessa": {"path": "res://assets/placeholder/portraits/kessa/mad.png", "crop": Rect2(40, 125, 260, 110)},
+}
+## Real seconds (ignores time_scale, same as the other crit timers) — kept
+## short on purpose per the user ("le temps qu'on voit le truc minimum"),
+## just long enough to register before cutting back to normal play.
+const CRIT_PORTRAIT_DURATION := 0.45
+
 @export var map_data: BattleMapData
 
 @onready var grid: BattleGrid = $BattleGrid
@@ -33,6 +97,10 @@ const BUMP_DISTANCE := 6.0
 @onready var camera: Camera2D = $Camera2D
 @onready var combat_stats: CombatStatsHUD = $CombatStatsHUD
 @onready var heal_preview: HealPreviewPanel = $HealPreviewLayer/HealPreviewPanel
+@onready var _crit_flash: ColorRect = $CritFlashLayer/CritFlash
+@onready var _crit_portrait_layer: CanvasLayer = $CritPortraitLayer
+@onready var _crit_portrait_rect: TextureRect = $CritPortraitLayer/Portrait
+@onready var _crit_portrait_sound: AudioStreamPlayer = $CritPortraitLayer/Sound
 
 var player_units: Array[Unit] = []
 var enemy_units: Array[Unit] = []
@@ -503,7 +571,7 @@ func _play_combat_scene(attacker: Unit, defender: Unit, log: Array, stats: Dicti
 			# AND plays the impact sound/particles on arrival — doing it here
 			# too would double up and land before the projectile even gets
 			# there.
-			await source.play_attack_animation(target.get_impact_point(), strike["hit"], source_weapon)
+			await source.play_attack_animation(target.get_impact_point(), strike["hit"], source_weapon, strike["crit"])
 		else:
 			var bump_dir := approach.normalized() if source == attacker else -approach.normalized()
 			var bump_start := source.position
@@ -514,29 +582,46 @@ func _play_combat_scene(attacker: Unit, defender: Unit, log: Array, stats: Dicti
 			var lunge_out := create_tween()
 			lunge_out.tween_property(source, "position", bump_start + bump_dir * BUMP_DISTANCE, 0.1)
 			await lunge_out.finished
-			# Play the impact VFX/SFX right when the blade actually lands
+			# Play the impact/miss VFX/SFX right when the blade actually lands
 			# (source.attack_contact, forwarded from the rig's own
 			# ATTACK_CONTACT_FRAME_INDEX — see AuroraBattleSprite), not after
 			# the whole swing including recovery/follow-through has finished
-			# playing, which read as noticeably late. A plain-sprite source
-			# (every current enemy, and Kessa — no rigged_battle_sprite yet,
-			# so play_attack_animation is a no-op and attack_contact would
-			# never fire) instead gets it right here, at the bump's forward
-			# peak — the only "contact" moment a non-rigged unit actually has.
+			# playing, which read as noticeably late — a miss gets the exact
+			# same treatment as a landed hit here (a whoosh instead of an
+			# impact burst), not delayed to the floating-text stage. A
+			# plain-sprite source (every current enemy — no
+			# rigged_battle_sprite yet, so play_attack_animation is a no-op
+			# and attack_contact would never fire) instead gets it right
+			# here, at the bump's forward peak — the only "contact" moment a
+			# non-rigged unit actually has.
 			var did_hit: bool = strike["hit"]
+			var did_crit: bool = strike["crit"]
 			var contact_target := target
 			var contact_weapon := source_weapon
+			var contact_source_pos := source.get_impact_point()
 			if source.supports_attack_contact():
 				var on_contact := func() -> void:
 					if did_hit:
-						_play_impact_effect(contact_target, contact_weapon)
+						if did_crit:
+							await _play_crit_portrait(source)
+						_play_impact_effect(contact_target, contact_weapon, did_crit)
+						if did_crit:
+							_play_crit_hitstop()
+					else:
+						_play_miss_sound(contact_source_pos)
 				source.attack_contact.connect(on_contact, CONNECT_ONE_SHOT)
 				await source.play_attack_animation(target.get_impact_point(), strike["hit"], source_weapon)
 				if source.attack_contact.is_connected(on_contact):
 					source.attack_contact.disconnect(on_contact)
 			else:
 				if did_hit:
-					_play_impact_effect(contact_target, contact_weapon)
+					if did_crit:
+						await _play_crit_portrait(source)
+					_play_impact_effect(contact_target, contact_weapon, did_crit)
+					if did_crit:
+						_play_crit_hitstop()
+				else:
+					_play_miss_sound(contact_source_pos)
 				await source.play_attack_animation(target.get_impact_point(), strike["hit"], source_weapon)
 			var lunge_back := create_tween()
 			lunge_back.tween_property(source, "position", bump_start, 0.15)
@@ -565,16 +650,89 @@ func _play_combat_scene(attacker: Unit, defender: Unit, log: Array, stats: Dicti
 
 ## Spawns a one-shot hit-spark/sound burst at `target`'s position, weapon-typed
 ## via `weapon` (metal clang, wood thock, or a magic chime — see
-## ImpactEffect.play). Only ever called for a strike that actually connected;
-## a ranged source's own impact instead comes from Projectile on arrival —
-## see the `_is_ranged` branch in _play_combat_scene.
-func _play_impact_effect(target: Unit, weapon: WeaponData) -> void:
+## ImpactEffect.play) unless `is_crit` is true, which overrides that entirely
+## with the weapon-agnostic red crit burst/sound. Only ever called for a
+## strike that actually connected; a ranged source's own impact instead
+## comes from Projectile on arrival — see the `_is_ranged` branch in
+## _play_combat_scene.
+func _play_impact_effect(target: Unit, weapon: WeaponData, is_crit: bool = false) -> void:
 	if not is_instance_valid(target):
 		return
 	var effect: ImpactEffect = IMPACT_EFFECT_SCENE.instantiate()
 	add_child(effect)
 	effect.global_position = target.get_impact_point()
-	effect.play(weapon)
+	effect.play(weapon, is_crit)
+
+## Plays SOUND_MISS at `position` — no particle burst (nothing landed to
+## show a burst at), and no weapon-type branching (unlike _play_impact_effect,
+## a miss sounds the same regardless of weapon). A throwaway node rather
+## than a scene like ImpactEffect since there's nothing else to it.
+func _play_miss_sound(position: Vector2) -> void:
+	var player := AudioStreamPlayer2D.new()
+	add_child(player)
+	player.global_position = position
+	player.stream = SOUND_MISS
+	player.play()
+	player.finished.connect(player.queue_free)
+
+## Shows a tight eye/brow crop of the attacker's "mad" VN portrait in a
+## horizontal letterbox band for CRIT_PORTRAIT_DURATION real seconds, then
+## hides it again — AWAITED by callers (unlike _play_crit_hitstop below),
+## since this is meant to happen BEFORE the impact effect/hit-stop, not
+## alongside them: crit lands → cut to portrait (brief) → cut back → THEN
+## the normal burst/flash/hit-stop plays as the payoff. No-op if `source`'s
+## character isn't in CRIT_PORTRAIT_DATA (every current enemy) — falls back
+## to just the flash+hit-stop, same as a normal named-companion crit minus
+## the cut-in.
+func _play_crit_portrait(source: Unit) -> void:
+	var data: Dictionary = CRIT_PORTRAIT_DATA.get(source.unit_data.character_id, {})
+	if data.is_empty():
+		return
+	var atlas := AtlasTexture.new()
+	atlas.atlas = load(data["path"])
+	atlas.region = data["crop"]
+	_crit_portrait_rect.texture = atlas
+	_crit_portrait_layer.visible = true
+	_crit_portrait_sound.stream = SOUND_CRIT_PORTRAIT
+	_crit_portrait_sound.play()
+	await get_tree().create_timer(CRIT_PORTRAIT_DURATION, false, false, true).timeout
+	_crit_portrait_layer.visible = false
+
+## Fire-and-forget: dips Engine.time_scale (a global multiplier on every
+## _process/_physics_process delta project-wide — deliberately NOT the pause
+## system, so combat's own tweens/timers slow down along with everything
+## else instead of freezing solid) and flashes CritFlash gray, both timed to
+## a real-time HITSTOP_DURATION. Not awaited by callers on purpose: the
+## caller (already inside a slowed time_scale once this runs) just keeps
+## going, which is what makes the REST of the strike's presentation (the
+## lunge-back tween, the next strike's PRE_STRIKE_DELAY) read as part of the
+## same slow-motion beat instead of a separate, blocking pause.
+##
+## Audio is unaffected by Engine.time_scale in Godot (the mixer runs on its
+## own real-time thread, not the scaled per-frame delta) — SOUND_CRIT plays
+## at normal pitch/speed through the dip with no special handling needed.
+##
+## Melee-only for now — see Battle.gd's did_crit branches. Projectile.gd
+## (ranged/Martin) does its own separate, simpler time_scale-only dip on a
+## ranged crit (no screen flash there yet, since Projectile has no easy
+## reference back to this node — not worth a shared singleton for a first
+## pass). Revisit if ranged crits need the same flash.
+func _play_crit_hitstop() -> void:
+	Engine.time_scale = HITSTOP_TIME_SCALE
+	_crit_flash.color.a = 0.0
+	var flash_tween := create_tween()
+	# Ignores time_scale so its timing stays predictable in real seconds
+	# regardless of the slowdown window above — without this, the tween's
+	# own delta shrinks along with everything else, badly tangling how long
+	# the flash actually takes to visually finish with how long the
+	# slowdown lasts (confirmed: this is why the first version read as
+	# "too short" — the fade-in alone needed longer than HITSTOP_DURATION
+	# to complete at the slowed rate, so time_scale reset mid-fade).
+	flash_tween.set_ignore_time_scale(true)
+	flash_tween.tween_property(_crit_flash, "color:a", CRIT_FLASH_PEAK_ALPHA, CRIT_FLASH_IN_DURATION)
+	flash_tween.tween_property(_crit_flash, "color:a", 0.0, CRIT_FLASH_OUT_DURATION)
+	await get_tree().create_timer(HITSTOP_DURATION, false, false, true).timeout
+	Engine.time_scale = 1.0
 
 ## Brief floating text over `target`: "Rate !" on a miss, "-N" on an
 ## ordinary hit, "Critique ! -N" on a crit — so damage and the two special

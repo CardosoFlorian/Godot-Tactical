@@ -67,6 +67,7 @@ signal heal_finished
 var _pending_target: Vector2
 var _pending_did_hit: bool = true
 var _pending_weapon: WeaponData
+var _pending_did_crit: bool = false
 var _projectile_spawned_this_attack := false
 
 func _ready() -> void:
@@ -87,10 +88,11 @@ func play_idle() -> void:
 ## melee swings have — callers that sequence combat resolution rely on it.
 ## The projectile itself is fire-and-forget (see _on_attack_frame_changed),
 ## not part of what's being awaited here.
-func play_attack(target_global_pos: Vector2 = Vector2.ZERO, did_hit: bool = true, weapon: WeaponData = null) -> void:
+func play_attack(target_global_pos: Vector2 = Vector2.ZERO, did_hit: bool = true, weapon: WeaponData = null, did_crit: bool = false) -> void:
 	_pending_target = target_global_pos
 	_pending_did_hit = did_hit
 	_pending_weapon = weapon
+	_pending_did_crit = did_crit
 	_projectile_spawned_this_attack = false
 	_idle_sprite.visible = false
 	_heal_sprite.visible = false
@@ -135,7 +137,7 @@ func _spawn_projectile() -> void:
 	get_tree().root.add_child(projectile)
 	var offset := HAND_OFFSET
 	offset.x *= signf(scale.x)  # mirror the hand offset when facing left
-	projectile.launch(global_position + offset, _pending_target, _pending_did_hit, _pending_weapon)
+	projectile.launch(global_position + offset, _pending_target, _pending_did_hit, _pending_weapon, _pending_did_crit)
 
 ## Same front-facing-by-design pose as his VN portraits/full-body art —
 ## unlike Aurora/Lycith's side-on battle art, his default pose doesn't read

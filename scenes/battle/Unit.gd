@@ -105,15 +105,15 @@ func supports_attack_contact() -> bool:
 
 ## No-op if this unit has no rigged battle sprite (plain static sprite).
 ## `target_global_pos` is only meaningful to a ranged rig (e.g. Martin's
-## fireball needs to know where to fly); `did_hit`/`weapon` are only
-## meaningful to a rig that plays its own impact effect on arrival (a
+## fireball needs to know where to fly); `did_hit`/`weapon`/`did_crit` are
+## only meaningful to a rig that plays its own impact effect on arrival (a
 ## projectile) rather than Battle.gd playing one directly for a melee swing
-## — melee rigs accept and ignore all three.
-func play_attack_animation(target_global_pos: Vector2 = Vector2.ZERO, did_hit: bool = true, weapon: WeaponData = null) -> void:
+## — melee rigs accept and ignore all four.
+func play_attack_animation(target_global_pos: Vector2 = Vector2.ZERO, did_hit: bool = true, weapon: WeaponData = null, did_crit: bool = false) -> void:
 	if _rig and _rig.has_method("play_attack"):
 		if _rig.has_signal("attack_contact") and not _rig.attack_contact.is_connected(attack_contact.emit):
 			_rig.attack_contact.connect(attack_contact.emit)
-		await _rig.play_attack(target_global_pos, did_hit, weapon)
+		await _rig.play_attack(target_global_pos, did_hit, weapon, did_crit)
 
 ## No-op if this unit's rig doesn't have a heal cast (every current unit
 ## except Martin — see MartinBattleSprite.play_heal). Battle.execute_heal

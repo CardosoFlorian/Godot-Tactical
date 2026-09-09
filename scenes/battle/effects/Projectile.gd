@@ -23,6 +23,19 @@ const FPS := 12.0
 const SPEED := 120.0
 
 const IMPACT_EFFECT_SCENE := preload("res://scenes/battle/effects/ImpactEffect.tscn")
+## Same weapon-agnostic whoosh Battle._play_miss_sound uses for a melee miss
+## — a miss sounds the same regardless of how it was thrown/cast.
+const SOUND_MISS := preload("res://assets/audio/sfx/miss.mp3")
+
+## Same global time_scale dip Battle._play_crit_hitstop uses for a melee
+## crit (see there for why it's a bare Engine.time_scale multiplier, not the
+## pause system) — duplicated here rather than reached-into on Battle since
+## Projectile has no easy reference back to it (spawned under
+## get_tree().root, not as Battle's child). No screen flash on a ranged
+## crit yet, just the slowdown — not worth a shared singleton for that one
+## missing piece on a first pass.
+const HITSTOP_TIME_SCALE := 0.3
+const HITSTOP_DURATION := 0.2
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite2D
 
@@ -55,10 +68,13 @@ func _ready() -> void:
 ## `r = dir.angle() + PI` — NOT `PI - dir.angle()`, which looked plausible
 ## but points the vertical component the wrong way (verified by hand on a
 ## down-left case before shipping this).
-## `did_hit`/`weapon` control the impact effect on arrival: a miss just
-## vanishes quietly (no sound/particles), a hit spawns a weapon-typed
-## ImpactEffect (see Battle._play_impact_effect for the melee equivalent).
-func launch(from: Vector2, to: Vector2, did_hit: bool = true, weapon: WeaponData = null) -> void:
+## `did_hit`/`weapon`/`did_crit` control the impact effect on arrival: a hit
+## spawns a weapon-typed ImpactEffect (or the weapon-agnostic red crit one if
+## `did_crit` — see Battle._play_impact_effect for the melee equivalent), a
+## miss plays SOUND_MISS instead — same "at the moment it would connect"
+## timing as a landed hit's effect, not delayed to whenever the caster's own
+## animation happens to finish.
+func launch(from: Vector2, to: Vector2, did_hit: bool = true, weapon: WeaponData = null, did_crit: bool = false) -> void:
 	global_position = from
 	var dir := to - from
 	if dir.x < 0:
@@ -75,5 +91,16 @@ func launch(from: Vector2, to: Vector2, did_hit: bool = true, weapon: WeaponData
 		var effect: ImpactEffect = IMPACT_EFFECT_SCENE.instantiate()
 		get_tree().root.add_child(effect)
 		effect.global_position = global_position
-		effect.play(weapon)
+		effect.play(weapon, did_crit)
+		if did_crit:
+			Engine.time_scale = HITSTOP_TIME_SCALE
+			get_tree().create_timer(HITSTOP_DURATION, false, false, true).timeout.connect(
+				func(): Engine.time_scale = 1.0)
+	else:
+		var miss_player := AudioStreamPlayer2D.new()
+		get_tree().root.add_child(miss_player)
+		miss_player.global_position = global_position
+		miss_player.stream = SOUND_MISS
+		miss_player.play()
+		miss_player.finished.connect(miss_player.queue_free)
 	queue_free()

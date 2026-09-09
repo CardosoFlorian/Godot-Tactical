@@ -58,7 +58,7 @@ func faces_right_by_default() -> bool:
 ## Params are unused (melee, no projectile, Battle.gd plays the impact
 ## effect itself for a melee hit) — accepted only so
 ## Unit.play_attack_animation() can call every rig's play_attack() uniformly.
-func play_attack(_target_global_pos: Vector2 = Vector2.ZERO, _did_hit: bool = true, _weapon: WeaponData = null) -> void:
+func play_attack(_target_global_pos: Vector2 = Vector2.ZERO, _did_hit: bool = true, _weapon: WeaponData = null, _did_crit: bool = false) -> void:
 	_contact_emitted_this_attack = false
 	_idle_sprite.visible = false
 	_attack_sprite.visible = true

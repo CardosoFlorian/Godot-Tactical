@@ -12,6 +12,15 @@ extends Node2D
 ## (swapped 2026-09-08 for a brighter, more dynamic one — the first pick,
 ## a flat circular burst, read as too plain/monochrome). Cropped once into
 ## assets/vfx/impact_{magic,physical}/, no per-call recoloring.
+##
+## Critical hits (2026-09-09) get their own look, INDEPENDENT of weapon
+## type — a red variant of a chunkier "explosion condensing" burst (same
+## pack, red row instead of white/grey), used for every crit regardless of
+## melee/bow/tome. Deliberately weapon-agnostic, same reasoning as the miss
+## sound: the point of a crit effect is "instantly readable as a crit," not
+## "a bigger version of this weapon's normal hit" — a per-weapon crit color
+## would blur that signal exactly when it matters most. `is_crit` overrides
+## weapon-type selection entirely when true.
 
 ## 2026-09-08: swapped from Kenney's realistic foley (impactMetal/Wood/Bell)
 ## to ElevenLabs-generated retro 8-bit/chiptune one-shots — the realistic
@@ -25,6 +34,7 @@ extends Node2D
 const SOUND_MELEE := preload("res://assets/audio/sfx/hit_melee.mp3")
 const SOUND_BOW := preload("res://assets/audio/sfx/hit_bow.mp3")
 const SOUND_MAGIC := preload("res://assets/audio/sfx/hit_fire.mp3")
+const SOUND_CRIT := preload("res://assets/audio/sfx/hit_crit.mp3")
 
 const MAGIC_FRAME_DIR := "res://assets/vfx/impact_magic/"
 const MAGIC_FRAME_PREFIX := "impact_magic"
@@ -38,23 +48,44 @@ const PHYSICAL_FRAME_COUNT := 9
 const PHYSICAL_FPS := 24.0
 const PHYSICAL_SCALE := 0.6
 
+const CRIT_FRAME_DIR := "res://assets/vfx/impact_crit/"
+const CRIT_FRAME_PREFIX := "impact_crit"
+const CRIT_FRAME_COUNT := 10
+## Slower than physical/magic on purpose (10fps vs 22-24fps): this burst
+## plays out mostly WHILE Battle._play_crit_hitstop has time_scale dipped,
+## which shrinks its effective on-screen speed too (AnimatedSprite2D has no
+## per-node way to ignore Engine.time_scale, unlike Tween). At 20fps (the
+## first-pass value) it read as "barely visible, already over" — most of
+## the animation played in the tiny sliver of real time the slowdown lasts,
+## then the last couple frames snapped through at full speed once time_scale
+## reset. 10fps roughly doubles the total frame-time budget, giving it a
+## real chance to read during the freeze instead of racing through it.
+const CRIT_FPS := 10.0
+const CRIT_SCALE := 0.8  # biggest of the three but not by much — 1.1 (first pass) read as too big
+
 @onready var _burst: AnimatedSprite2D = $BurstSprite
 @onready var _sound: AudioStreamPlayer2D = $AudioStreamPlayer2D
 
 ## `weapon` may be null (unarmed) — falls back to the metal/physical look
 ## rather than erroring, since a punch landing still deserves some feedback.
-func play(weapon: WeaponData) -> void:
+## `is_crit` overrides weapon-type selection entirely (see the class doc
+## comment) — a crit always gets the red burst + crit sound, never the
+## weapon-typed one, regardless of what `weapon` is.
+func play(weapon: WeaponData, is_crit: bool = false) -> void:
 	var weapon_type := weapon.weapon_type if weapon else WeaponData.WeaponType.SWORD
 	var is_magic := weapon_type == WeaponData.WeaponType.TOME
-	match weapon_type:
-		WeaponData.WeaponType.TOME:
-			_sound.stream = SOUND_MAGIC
-		WeaponData.WeaponType.BOW:
-			_sound.stream = SOUND_BOW
-		_:
-			_sound.stream = SOUND_MELEE
-	_burst.scale = Vector2.ONE * (MAGIC_SCALE if is_magic else PHYSICAL_SCALE)
-	_build_burst_frames(is_magic)
+	if is_crit:
+		_sound.stream = SOUND_CRIT
+	else:
+		match weapon_type:
+			WeaponData.WeaponType.TOME:
+				_sound.stream = SOUND_MAGIC
+			WeaponData.WeaponType.BOW:
+				_sound.stream = SOUND_BOW
+			_:
+				_sound.stream = SOUND_MELEE
+	_burst.scale = Vector2.ONE * (CRIT_SCALE if is_crit else (MAGIC_SCALE if is_magic else PHYSICAL_SCALE))
+	_build_burst_frames(is_crit, is_magic)
 	_sound.play()
 	_burst.play("burst")
 	await _burst.animation_finished
@@ -69,11 +100,11 @@ func play(weapon: WeaponData) -> void:
 		await _sound.finished
 	queue_free()
 
-func _build_burst_frames(is_magic: bool) -> void:
-	var dir := MAGIC_FRAME_DIR if is_magic else PHYSICAL_FRAME_DIR
-	var prefix := MAGIC_FRAME_PREFIX if is_magic else PHYSICAL_FRAME_PREFIX
-	var count := MAGIC_FRAME_COUNT if is_magic else PHYSICAL_FRAME_COUNT
-	var fps := MAGIC_FPS if is_magic else PHYSICAL_FPS
+func _build_burst_frames(is_crit: bool, is_magic: bool) -> void:
+	var dir := CRIT_FRAME_DIR if is_crit else (MAGIC_FRAME_DIR if is_magic else PHYSICAL_FRAME_DIR)
+	var prefix := CRIT_FRAME_PREFIX if is_crit else (MAGIC_FRAME_PREFIX if is_magic else PHYSICAL_FRAME_PREFIX)
+	var count := CRIT_FRAME_COUNT if is_crit else (MAGIC_FRAME_COUNT if is_magic else PHYSICAL_FRAME_COUNT)
+	var fps := CRIT_FPS if is_crit else (MAGIC_FPS if is_magic else PHYSICAL_FPS)
 
 	var frames := SpriteFrames.new()
 	frames.add_animation("burst")

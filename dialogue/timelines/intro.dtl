@@ -1,14 +1,14 @@
 Le camp de fortune, la veille de la première bataille.
 join Aurora (neutral) center
 join Lycith (neutral) left
-join Kessa right
+join Kessa (neutral) right
 Aurora (neutral): L'ennemi campe près du pont. On attaque à l'aube.
 Lycith (neutral): Compris. Je prends la lance, comme toujours.
-Kessa: Et moi je défonce tout ce qui bouge. Simple.
+Kessa (neutral): Et moi je défonce tout ce qui bouge. Simple.
 Aurora (mad): Kessa...
-Kessa: Quoi, ça marche à tous les coups.
+Kessa (happy): Quoi, ça marche à tous les coups.
 Aurora (neutral): Restez groupés. On ne perd personne demain.
-Kessa: Bon, je vais vérifier les sentinelles avant que ça tourne mal.
+Kessa (stern): Bon, je vais vérifier les sentinelles avant que ça tourne mal.
 leave Kessa
 join Martin (neutral) right
 Martin (neutral): Pardonnez mon retard, Votre Altesse. J'en ai terminé avec l'inventaire des vivres.

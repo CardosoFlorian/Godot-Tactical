@@ -31,6 +31,45 @@ offset_right = 436.0
 offset_bottom = -16.0
 grow_vertical = 0
 
+[node name="CritFlashLayer" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="CritFlash" type="ColorRect" parent="CritFlashLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.5, 0.5, 0.5, 0)
+
+[node name="CritPortraitLayer" type="CanvasLayer" parent="."]
+visible = false
+layer = 15
+
+[node name="Background" type="ColorRect" parent="CritPortraitLayer"]
+anchors_preset = -1
+anchor_top = 0.3
+anchor_right = 1.0
+anchor_bottom = 0.68
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.32, 0.04, 0.07, 1)
+
+[node name="Portrait" type="TextureRect" parent="CritPortraitLayer"]
+anchors_preset = -1
+anchor_top = 0.3
+anchor_right = 1.0
+anchor_bottom = 0.68
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Sound" type="AudioStreamPlayer" parent="CritPortraitLayer"]
+
 [node name="BattleStateMachine" type="Node" parent="."]
 script = ExtResource("4")
 

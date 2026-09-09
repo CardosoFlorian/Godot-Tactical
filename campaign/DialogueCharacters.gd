@@ -32,10 +32,12 @@ const PORTRAIT_DIR := "res://assets/placeholder/portraits/"
 ##
 ## Doran removed 2026-09-05: replaced by Lycith (see LYCITH_PORTRAITS below)
 ## as one of Aurora's 3 companions in every timeline. Elyn removed 2026-09-07,
-## same way: replaced by Martin (see MARTIN_PORTRAITS below).
-const ROSTER := [
-	{"id": "Kessa", "portrait": "kessa.png"},
-]
+## same way: replaced by Martin (see MARTIN_PORTRAITS below). Kessa removed
+## 2026-09-09: she has real per-expression art now too (see KESSA_PORTRAITS
+## below), same treatment as the other 3 — ROSTER is now empty, but kept
+## around (rather than deleted outright) since it's still the landing spot
+## for any future named enemy/boss that only ever needs one flat portrait.
+const ROSTER := []
 
 ## Lycith portrait name -> file, same AURORA_PORTRAITS pattern. Lives in its
 ## own subfolder (assets/placeholder/portraits/lycith/) — see AURORA_PORTRAITS
@@ -118,6 +120,55 @@ const MARTIN_PORTRAITS := {
 ## alpha<30 cutoff before computing the bbox. Back to 0.65 now that the real
 ## fix is in — retest before assuming this exact number is final.
 const MARTIN_PORTRAIT_SCALE := 0.65
+
+## Kessa portrait name -> file, same pattern as the other 3. Lives in its own
+## subfolder (assets/placeholder/portraits/kessa/), cropped 2026-09-09 from a
+## 5x2 ChatGPT expression sheet with a near-black (not transparent) backdrop —
+## unlike Aurora/Lycith/Martin's sheets, this one needed real background
+## removal (reference-anchored flood fill from the sheet's own corner color,
+## not a plain alpha-cut) since black hair on a near-black background is the
+## hardest case this project's bg-removal has hit yet. Two real bugs caught
+## before shipping: (1) the source file's own alpha channel had scattered
+## fully-transparent pixels with garbage stored RGB (mostly pure white/red/
+## green noise, e.g. (255,255,255) at alpha≈1) — a pure color-distance flood
+## fill can't catch these since white reads as maximally "not background,"
+## so they survived as opaque white speckle until the source alpha was used
+## as an explicit veto (force final alpha to 0 wherever the source file's own
+## alpha was already <30) in addition to the color-distance pass; (2) what
+## initially looked like more white edge fringing on a checkerboard test
+## background turned out to be normal semi-transparent edge antialiasing, an
+## artifact of the checkerboard test pattern itself, not a real defect —
+## confirmed clean by compositing over a dark background instead (the actual
+## in-game context), same lesson as always: verify against the real use case,
+## not a synthetic one that can mislead in its own way.
+const KESSA_PORTRAITS := {
+	"neutral": "kessa/neutral.png",
+	"happy": "kessa/happy.png",
+	"sad": "kessa/sad.png",
+	"mad": "kessa/mad.png",
+	"shock": "kessa/shock.png",
+	"laugh": "kessa/laugh.png",
+	"stern": "kessa/stern.png",
+	"talk": "kessa/talk.png",
+	"embarrassed": "kessa/embarrassed.png",
+	"pensive": "kessa/pensive.png",
+}
+
+## Cell canvas is 316x449 (taller/narrower than Aurora/Lycith/Martin's more
+## square ~378x371 crops — tightly cropped to the sheet's real divider bars,
+## see KESSA_PORTRAITS above, so 0 bottom padding), and her "right" VN slot
+## is much narrower than "left"/"center" (0.76-0.96 of screen width = ~256px,
+## vs left's ~384px) — see vn_portrait_layer_tactical.tscn. Derived the same
+## way AURORA_PORTRAIT_SCALE's final round was (from container WIDTH, not
+## height, since width is what actually clips first): container height after
+## the -147 textbox-overlap offset is 573px, so rendered_width = 573 * scale
+## * (316/449); solving for a ~248px render width (small margin inside the
+## 256px slot) gives scale ≈ 0.61. First shipped value (0.54) read as "way
+## too small" in a real screenshot — bumped here; pure math still, same
+## "retest before assuming this is final" caveat as every other portrait
+## scale in this file, and this one has the least margin for error given how
+## narrow the "right" slot is.
+const KESSA_PORTRAIT_SCALE := 0.61
 
 ## All names render in black now that the name label has its own readable
 ## panel behind it (Kenney ui-pack-pixel-adventure), rather than one color
@@ -272,6 +323,24 @@ static func register_all() -> void:
 		martin.add_portrait(portrait_name, PORTRAIT_DIR + MARTIN_PORTRAITS[portrait_name])
 	martin.default_portrait = "neutral"
 	directory["Martin"] = martin
+
+	var kessa := DialogicCharacter.new()
+	kessa.display_name = "Kessa"
+	kessa.color = NAME_COLOR
+	kessa.scale = KESSA_PORTRAIT_SCALE
+	# She always joins at "right" (see vn_three_character_cap / intro.dtl).
+	# Her source art faces right by design (explicit user request, matching
+	# Aurora's own raw-art direction) — same as Lycith's raw-left-facing art
+	# needing a flip to face right/inward from the "left" slot, a raw-right
+	# character at the "right" slot needs the opposite flip to face
+	# left/inward toward whoever's in "center" instead of facing off-screen.
+	# Inferred from the established pattern, not yet visually confirmed live —
+	# flag it if she reads as looking away from the conversation.
+	kessa.mirror = true
+	for portrait_name in KESSA_PORTRAITS:
+		kessa.add_portrait(portrait_name, PORTRAIT_DIR + KESSA_PORTRAITS[portrait_name])
+	kessa.default_portrait = "neutral"
+	directory["Kessa"] = kessa
 
 	Engine.set_meta("dch_directory", directory)
 	_registered = true
