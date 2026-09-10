@@ -17,6 +17,7 @@ const SOUND_MISS := preload("res://assets/audio/sfx/miss.mp3")
 ## Plays the instant the crit cut-in portrait appears — see _play_crit_portrait.
 const SOUND_CRIT_PORTRAIT := preload("res://assets/audio/sfx/crit_portrait.mp3")
 
+
 # Combat scene staging (execute_attack / _play_combat_scene): how far the
 # camera zooms in and how far each unit steps toward the other for the
 # close-up clash, before everything eases back to the normal map view.
@@ -355,15 +356,30 @@ func all_player_units_acted() -> bool:
 			return false
 	return true
 
+## Debuffs tick at the END of EVERY phase (both sides), not just the
+## affected unit's own — "2 turns" means 2 phase-ends total, counting from
+## whichever phase-end the debuff was applied during, even if that's the
+## attacker's own phase and the target hasn't acted yet. E.g. unit A debuffs
+## unit B during A's phase: A's phase ending is already "1 tour de malus" for
+## B; B then plays its own phase, and THAT phase ending is "tour 2", removing
+## it. Ticking only the ending side's own units would miss this first tick.
 func end_player_turn() -> void:
+	_tick_all_debuffs()
 	current_phase = UnitData.Team.ENEMY
 	SignalBus.turn_ended.emit()
 	state_machine.change_state("start_turn")
 
 func end_enemy_turn() -> void:
+	_tick_all_debuffs()
 	current_phase = UnitData.Team.PLAYER
 	SignalBus.turn_ended.emit()
 	state_machine.change_state("start_turn")
+
+func _tick_all_debuffs() -> void:
+	for unit in player_units:
+		unit.unit_data.tick_debuffs()
+	for unit in enemy_units:
+		unit.unit_data.tick_debuffs()
 
 func get_attackable_targets(unit: Unit) -> Array[Unit]:
 	return get_attackable_targets_from(unit.grid_pos, unit)
@@ -664,6 +680,14 @@ func _play_combat_scene(attacker: Unit, defender: Unit, log: Array, stats: Dicti
 			_show_strike_message(target, "Critique ! -%d" % strike["damage"], Color(1.0, 0.85, 0.2))
 		else:
 			_show_strike_message(target, "-%d" % strike["damage"], Color(1.0, 0.4, 0.4))
+		var debuff_weapon: WeaponData = strike["debuff_weapon"]
+		if debuff_weapon:
+			var stat_label := WeaponData.DEBUFF_STAT_LABELS[debuff_weapon.debuff_stat]
+			# Below the damage/crit/miss message (a less negative y_offset —
+			# closer to the target — reads as "underneath" it) and smaller, per
+			# the user's call: the debuff is a secondary detail, not as
+			# important as the damage number it accompanies.
+			_show_strike_message(target, "%s -%d" % [stat_label, debuff_weapon.debuff_amount], Color(0.75, 0.55, 1.0), -40.0, 16)
 
 	await get_tree().create_timer(END_HOLD_DURATION).timeout
 	combat_stats.hide_combat()
@@ -770,12 +794,17 @@ func _play_crit_hitstop() -> void:
 ## much the HP bar moved.
 const STRIKE_MESSAGE_WIDTH := 220.0
 
-func _show_strike_message(target: Unit, text: String, color: Color) -> void:
+## `y_offset` lets a second, simultaneous message (the debuff notice — see
+## the strike loop) start lower than the default -70 (i.e. closer to the
+## target, reading as "below" the damage number) so it doesn't render
+## directly on top of it; `font_size` lets that same message read as a
+## smaller, secondary notice rather than as important as the damage itself.
+func _show_strike_message(target: Unit, text: String, color: Color, y_offset: float = -70.0, font_size: int = 24) -> void:
 	if not is_instance_valid(target):
 		return
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", 24)
+	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
@@ -786,7 +815,7 @@ func _show_strike_message(target: Unit, text: String, color: Color) -> void:
 	# would need it in the tree a frame early to measure correctly.
 	label.custom_minimum_size = Vector2(STRIKE_MESSAGE_WIDTH, 0)
 	label.size = Vector2(STRIKE_MESSAGE_WIDTH, 32)
-	label.position = target.position + Vector2(-STRIKE_MESSAGE_WIDTH / 2.0, -70)
+	label.position = target.position + Vector2(-STRIKE_MESSAGE_WIDTH / 2.0, y_offset)
 	add_child(label)
 	var tween := create_tween()
 	tween.tween_property(label, "position:y", label.position.y - 24, 0.8)

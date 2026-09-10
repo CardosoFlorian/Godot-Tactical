@@ -1,14 +1,20 @@
 class_name UnitInfoPanel
 extends PanelContainer
 
-## Indexed by WeaponData.WeaponType (SWORD=0, LANCE=1, AXE=2, BOW=3, TOME=4).
+## Indexed by WeaponData.WeaponType (SWORD=0, LANCE=1, AXE=2, BOW=3, TOME=4,
+## SCYTHE=5).
 const PROFICIENCY_ICONS: Array[Texture2D] = [
 	preload("res://assets/ui/weapon_icons/sword.png"),
 	preload("res://assets/ui/weapon_icons/lance.png"),
 	preload("res://assets/ui/weapon_icons/axe.png"),
 	preload("res://assets/ui/weapon_icons/bow.png"),
 	preload("res://assets/ui/weapon_icons/tome.png"),
+	preload("res://assets/ui/weapon_icons/scythe.png"),
 ]
+
+## Reset color for a stat Label once any debuff on it expires — see _set_stat.
+const NORMAL_STAT_COLOR := Color.WHITE
+const DEBUFF_STAT_COLOR := Color(1.0, 0.35, 0.35, 1)
 
 ## Indexed by ClassData.MovementType (INFANTRY=0, MOUNTED=1, FLYING=2).
 ## Unlike PROFICIENCY_ICONS above (all 5 shown, unusable ones dimmed), only
@@ -30,6 +36,7 @@ const MOVEMENT_ICONS: Array[Texture2D] = [
 	$VBox/ClassRow/ProficiencyIcons/Axe,
 	$VBox/ClassRow/ProficiencyIcons/Bow,
 	$VBox/ClassRow/ProficiencyIcons/Tome,
+	$VBox/ClassRow/ProficiencyIcons/Scythe,
 ]
 @onready var hp_bar: ProgressBar = $VBox/HPBar
 @onready var hp_label: Label = $VBox/HPBar/HPLabel
@@ -58,13 +65,13 @@ func show_unit(unit_data: UnitData) -> void:
 	hp_bar.value = unit_data.get_current_hp()
 	hp_label.text = "%d / %d" % [unit_data.get_current_hp(), unit_data.get_max_hp()]
 
-	stat_str.text = "Force %d" % unit_data.get_str()
-	stat_mag.text = "Magie %d" % unit_data.get_mag()
-	stat_skl.text = "Technique %d" % unit_data.get_skl()
-	stat_spd.text = "Vitesse %d" % unit_data.get_spd()
-	stat_def.text = "Defense %d" % unit_data.get_def()
-	stat_res.text = "Resist. %d" % unit_data.get_res()
-	stat_lck.text = "Chance %d" % unit_data.get_lck()
+	_set_stat(stat_str, "Force", unit_data.get_str(), unit_data, WeaponData.DebuffStat.STR)
+	_set_stat(stat_mag, "Magie", unit_data.get_mag(), unit_data, WeaponData.DebuffStat.MAG)
+	_set_stat(stat_skl, "Technique", unit_data.get_skl(), unit_data, WeaponData.DebuffStat.SKL)
+	_set_stat(stat_spd, "Vitesse", unit_data.get_spd(), unit_data, WeaponData.DebuffStat.SPD)
+	_set_stat(stat_def, "Defense", unit_data.get_def(), unit_data, WeaponData.DebuffStat.DEF)
+	_set_stat(stat_res, "Resist.", unit_data.get_res(), unit_data, WeaponData.DebuffStat.RES)
+	_set_stat(stat_lck, "Chance", unit_data.get_lck(), unit_data, WeaponData.DebuffStat.LCK)
 	stat_con.text = "Constit. %d" % unit_data.get_con()
 	stat_mov.text = "Mouv %d" % unit_data.get_mov()
 
@@ -74,6 +81,17 @@ func show_unit(unit_data: UnitData) -> void:
 	weapon_icon.visible = weapon_icon.texture != null
 
 	show()
+
+## Sets a stat label's text AND colors it red whenever an active debuff is
+## currently lowering that stat, white otherwise — re-set every call (not
+## just when debuffed) since the SAME Label nodes are reused across
+## show_unit() calls for different units/turns, so a stat that was red last
+## time needs to be explicitly reset once its debuff expires or a different,
+## non-debuffed unit is shown.
+func _set_stat(label: Label, prefix: String, value: int, unit_data: UnitData, stat: WeaponData.DebuffStat) -> void:
+	label.text = "%s %d" % [prefix, value]
+	var is_debuffed := unit_data.get_debuff_total(stat) > 0
+	label.add_theme_color_override("font_color", DEBUFF_STAT_COLOR if is_debuffed else NORMAL_STAT_COLOR)
 
 ## Lights up one icon per weapon type character_class.usable_weapon_types
 ## allows, dims the rest rather than hiding them (so the full 5-icon set is

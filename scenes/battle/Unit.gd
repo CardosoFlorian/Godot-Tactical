@@ -54,6 +54,10 @@ func setup(data: UnitData, start_pos: Vector2i, grid: BattleGrid) -> void:
 	unit_data = data
 	grid_pos = start_pos
 	position = grid.grid_to_world(start_pos)
+	# Debuffs are battle-only (unlike current_hp, which intentionally
+	# persists) — a safety net in case a unit's UnitData somehow still
+	# carries one in from a previous fight.
+	unit_data.active_debuffs.clear()
 	_refresh_sprite()
 
 ## Acted units are visibly dimmed so it's never ambiguous whether they can

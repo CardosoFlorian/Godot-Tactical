@@ -31,6 +31,9 @@ func setup(weapon: WeaponData, slot_index: int, is_equipped: bool, is_usable: bo
 	icon_rect.texture = weapon.icon
 	name_label.text = weapon.display_name
 	stats_label.text = "Pui %d  Pré %d%%  Crit %d%%  Por %d-%d" % [weapon.might, weapon.hit, weapon.crit, weapon.min_range, weapon.max_range]
+	if weapon.can_debuff():
+		var stat_label := WeaponData.DEBUFF_STAT_LABELS[weapon.debuff_stat]
+		stats_label.text += "  ·  %s -%d (%dt)" % [stat_label, weapon.debuff_amount, weapon.debuff_duration]
 	equipped_badge.visible = is_equipped
 	modulate = Color.WHITE if is_usable else Color(1, 1, 1, 0.25)
 	disabled = not is_usable

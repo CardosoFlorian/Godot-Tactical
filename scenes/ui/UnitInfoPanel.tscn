@@ -35,6 +35,7 @@ text = "Classe Niv.1"
 custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
 size_flags_vertical = 4
+expand_mode = 1
 stretch_mode = 5
 
 [node name="ProficiencySpacer" type="Control" parent="VBox/ClassRow"]
@@ -48,26 +49,37 @@ theme_override_constants/separation = 3
 [node name="Sword" type="TextureRect" parent="VBox/ClassRow/ProficiencyIcons"]
 custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
+expand_mode = 1
 stretch_mode = 5
 
 [node name="Lance" type="TextureRect" parent="VBox/ClassRow/ProficiencyIcons"]
 custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
+expand_mode = 1
 stretch_mode = 5
 
 [node name="Axe" type="TextureRect" parent="VBox/ClassRow/ProficiencyIcons"]
 custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
+expand_mode = 1
 stretch_mode = 5
 
 [node name="Bow" type="TextureRect" parent="VBox/ClassRow/ProficiencyIcons"]
 custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
+expand_mode = 1
 stretch_mode = 5
 
 [node name="Tome" type="TextureRect" parent="VBox/ClassRow/ProficiencyIcons"]
 custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Scythe" type="TextureRect" parent="VBox/ClassRow/ProficiencyIcons"]
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+expand_mode = 1
 stretch_mode = 5
 
 [node name="HPBar" type="ProgressBar" parent="VBox"]
@@ -148,6 +160,7 @@ size_flags_horizontal = 3
 custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
 size_flags_vertical = 4
+expand_mode = 1
 stretch_mode = 5
 
 [node name="WeaponLabel" type="Label" parent="VBox/MovWeaponRow"]

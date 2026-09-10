@@ -123,6 +123,7 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 		var did_hit := roll <= hit_chance
 		var did_crit := false
 		var damage := 0
+		var debuff_weapon: WeaponData = null
 		if did_hit:
 			var crit_chance := get_crit_chance(source, target)
 			did_crit = rng.randi_range(1, 100) <= crit_chance
@@ -130,6 +131,10 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 			if did_crit:
 				damage *= CRIT_DAMAGE_MULTIPLIER
 			target.set_current_hp(target.get_current_hp() - damage)
+			var source_weapon := source.get_equipped_weapon()
+			if source_weapon and source_weapon.can_debuff():
+				target.apply_debuff(source_weapon)
+				debuff_weapon = source_weapon
 		log.append({
 			"source": source,
 			"target": target,
@@ -137,6 +142,7 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 			"crit": did_crit,
 			"damage": damage,
 			"target_hp_after": target.get_current_hp(),
+			"debuff_weapon": debuff_weapon,
 		})
 		if not target.is_alive():
 			break

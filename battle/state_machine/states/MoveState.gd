@@ -30,9 +30,13 @@ func exit() -> void:
 ## onto its own tile (same mechanism handle_unit_clicked below uses when
 ## you click your own unit) so has_moved flips true, then jumps straight to
 ## targeting instead of bouncing through "action_menu" just to click again.
-## Equip is a third case, but doesn't fit either pattern: it's free (doesn't
-## end the turn like Wait, doesn't need has_moved like Attack/Heal), so it
-## neither ends the turn nor calls _move_to — see its own case below.
+## Equip is a third case, but doesn't fit either pattern: opening the menu
+## itself doesn't commit anything (has_moved stays false so far) — but if the
+## player actually walks out with a DIFFERENT weapon than they started the
+## turn with, EquipMenuState.handle_weapon_selected is what locks has_moved
+## true and redirects straight to "action_menu" instead of back here, so the
+## unit can still Attack/Heal/Wait from where it's standing but can no longer
+## move — see the comment there for why.
 func handle_action_chosen(action_name: String) -> void:
 	var unit := battle.selected_unit
 	match action_name:
@@ -50,11 +54,6 @@ func handle_action_chosen(action_name: String) -> void:
 			await _move_to(unit.grid_pos)
 			state_machine.change_state("heal_targeting")
 		"equip":
-			# Free action, unlike attack/heal above — no _move_to needed since
-			# nothing is being committed (has_moved stays false), so the unit
-			# can still move normally afterward. Returns to "move" (see
-			# EquipMenuState), which re-enters and recomputes attack-range
-			# highlighting for whatever weapon ends up equipped.
 			if not battle.can_switch_weapon(unit):
 				return
 			state_machine.change_state("equip_menu")
@@ -88,9 +87,11 @@ func handle_unit_clicked(unit: Unit) -> void:
 		state_machine.change_state("unit_select")
 
 func handle_cancel() -> void:
-	# Nothing's moved yet at this point, so no undo_move — but a pre-move
-	# equip swap (see the "equip" case above) still needs reverting on a
-	# full cancel, same invariant undo_move upholds for position.
+	# Nothing's moved yet at this point, so no undo_move — but as a safety
+	# net, revert any equip swap anyway. In practice equipped_index should
+	# already equal selected_unit_start_equipped_index whenever we're back
+	# in "move" (a real change redirects to "action_menu" instead, see
+	# handle_action_chosen's "equip" case), so this is normally a no-op.
 	battle.revert_equipped_weapon(battle.selected_unit)
 	state_machine.change_state("unit_select")
 

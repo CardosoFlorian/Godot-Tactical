@@ -32,8 +32,11 @@ func _ready() -> void:
 ## otherwise the player is forced through a "click my own tile to confirm
 ## not moving, THEN click Attack/Heal/Wait" detour for something that
 ## doesn't need a move at all (see MoveState.handle_action_chosen, which is
-## what actually acts on these buttons when enabled here). Promote still
-## needs a real move/confirm first.
+## what actually acts on these buttons when enabled here). Equip is also
+## available here (unlike Promote, which genuinely needs a real move/confirm
+## first) — picking a different weapon than the unit started its turn with
+## locks it in place instead of ending its move privilege silently; see
+## EquipMenuState.handle_weapon_selected.
 func show_for_move(can_attack: bool = false, weapon_can_heal: bool = false, can_heal: bool = false, can_switch_weapon: bool = false) -> void:
 	attack_button.disabled = not can_attack
 	heal_button.visible = weapon_can_heal
