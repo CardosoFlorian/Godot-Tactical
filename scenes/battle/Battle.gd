@@ -8,6 +8,7 @@ extends Node2D
 const UNIT_SCENE := preload("res://scenes/battle/Unit.tscn")
 const IMPACT_EFFECT_SCENE := preload("res://scenes/battle/effects/ImpactEffect.tscn")
 const HEAL_EFFECT_SCENE := preload("res://scenes/battle/effects/HealEffect.tscn")
+const SUPPORT_EFFECT_SCENE := preload("res://scenes/battle/effects/SupportEffect.tscn")
 ## Whoosh sound for a missed strike — weapon-agnostic (same sound for melee/
 ## bow/tome misses), unlike the weapon-typed impact sounds a landed hit
 ## uses, since nothing actually connects on a miss for a weapon type to
@@ -118,6 +119,14 @@ var selected_unit_start_pos: Vector2i
 ## everything else about the attempt got undone. Restored in undo_move
 ## alongside position.
 var selected_unit_start_equipped_index: int = 0
+## Which action ("attack"/"heal"/"support") WeaponPickerState is currently
+## choosing a weapon for — set by start_targeting right before switching to
+## "weapon_picker", read back by WeaponPickerState.enter/handle_weapon_selected.
+## No return-state tracking needed the way EquipMenuState has one: this
+## state is only ever reached after the unit's move is already committed
+## (see start_targeting), so Cancel always goes back to "action_menu",
+## same as TargetingState/HealState/SupportTargetingState's own Cancel.
+var pending_weapon_picker_action: String = ""
 var move_range: Dictionary = {}
 var current_phase: int = UnitData.Team.PLAYER
 var rng := RandomNumberGenerator.new()
@@ -131,6 +140,7 @@ func _ready() -> void:
 	rng.randomize()
 	ui.attack_pressed.connect(func(): state_machine.handle_action_chosen("attack"))
 	ui.heal_pressed.connect(func(): state_machine.handle_action_chosen("heal"))
+	ui.support_pressed.connect(func(): state_machine.handle_action_chosen("support"))
 	ui.equip_pressed.connect(func(): state_machine.handle_action_chosen("equip"))
 	ui.weapon_selected.connect(func(i: int): state_machine.handle_weapon_selected(i))
 	ui.wait_pressed.connect(func(): state_machine.handle_action_chosen("wait"))
@@ -192,8 +202,7 @@ func _process(_delta: float) -> void:
 	_hovered_unit = occupant
 	if occupant:
 		ui.show_hover_unit(occupant.unit_data)
-		var reachable := grid.compute_move_range(occupant.grid_pos, occupant.unit_data.get_mov(), occupant.unit_data.team, occupant.unit_data.get_movement_type())
-		show_unit_range(occupant, reachable)
+		show_unit_range(occupant, get_move_range(occupant))
 
 ## Previews the combat stats panel (see CombatStatsHUD) when hovering a
 ## valid attack target during TargetingState — no camera zoom, no unit
@@ -356,37 +365,46 @@ func all_player_units_acted() -> bool:
 			return false
 	return true
 
-## Debuffs tick at the END of EVERY phase (both sides), not just the
-## affected unit's own — "2 turns" means 2 phase-ends total, counting from
-## whichever phase-end the debuff was applied during, even if that's the
-## attacker's own phase and the target hasn't acted yet. E.g. unit A debuffs
-## unit B during A's phase: A's phase ending is already "1 tour de malus" for
-## B; B then plays its own phase, and THAT phase ending is "tour 2", removing
-## it. Ticking only the ending side's own units would miss this first tick.
+## Debuffs AND freeze tick at the END of EVERY phase (both sides), not just
+## the affected unit's own — "2 turns" means 2 phase-ends total, counting
+## from whichever phase-end the effect was applied during, even if that's
+## the attacker's own phase and the target hasn't acted yet. E.g. unit A
+## debuffs unit B during A's phase: A's phase ending is already "1 tour de
+## malus" for B; B then plays its own phase, and THAT phase ending is "tour
+## 2", removing it. Ticking only the ending side's own units would miss this
+## first tick. Freeze (see UnitData.tick_freeze) follows the exact same
+## timing convention, no reason for it to behave differently from a debuff.
 func end_player_turn() -> void:
-	_tick_all_debuffs()
+	_tick_all_status_effects()
 	current_phase = UnitData.Team.ENEMY
 	SignalBus.turn_ended.emit()
 	state_machine.change_state("start_turn")
 
 func end_enemy_turn() -> void:
-	_tick_all_debuffs()
+	_tick_all_status_effects()
 	current_phase = UnitData.Team.PLAYER
 	SignalBus.turn_ended.emit()
 	state_machine.change_state("start_turn")
 
-func _tick_all_debuffs() -> void:
+func _tick_all_status_effects() -> void:
 	for unit in player_units:
 		unit.unit_data.tick_debuffs()
+		unit.unit_data.tick_freeze()
 	for unit in enemy_units:
 		unit.unit_data.tick_debuffs()
+		unit.unit_data.tick_freeze()
 
 func get_attackable_targets(unit: Unit) -> Array[Unit]:
 	return get_attackable_targets_from(unit.grid_pos, unit)
 
 func get_attackable_targets_from(from_pos: Vector2i, unit: Unit) -> Array[Unit]:
 	var weapon := unit.unit_data.get_equipped_weapon()
-	if weapon == null:
+	# A support gauntlet is never a combat weapon (user's own words: "jamais
+	# en attaque") — unlike Scythe (attacks AND debuffs) or a heal tome
+	# (attacks OR heals), it ONLY does its Support effect. Attack just stays
+	# permanently unavailable while one's equipped, same "always disabled,
+	# never hidden" Attack already does for an out-of-range target.
+	if weapon == null or not weapon.can_attack():
 		return []
 	var tiles := grid.get_tiles_in_range(from_pos, weapon.min_range, weapon.max_range)
 	var opponents := enemy_units if unit.unit_data.team == UnitData.Team.PLAYER else player_units
@@ -397,16 +415,58 @@ func get_attackable_targets_from(from_pos: Vector2i, unit: Unit) -> Array[Unit]:
 			result.append(occupant)
 	return result
 
-func has_attackable_target(unit: Unit) -> bool:
-	return not get_attackable_targets(unit).is_empty()
+## Whether `unit` could act on SOMEBODY right now for `action` using ANY of
+## its class-usable, action-capable inventory weapons — not just whichever
+## happens to be currently equipped. This is what the Attack/Heal/Support
+## button's ENABLED state should mean now that choosing the action can open
+## the weapon-picker first (see start_targeting): the real question isn't
+## "can my current weapon reach someone", it's "is there SOME weapon in my
+## inventory I could pick that would let me do this". Once a specific
+## weapon is actually chosen/equipped, the corresponding targeting state
+## still reads the real range off get_attackable_targets/get_healable_
+## targets/get_support_targets as before — those stay equipped-weapon-only,
+## unchanged, since the weapon is fixed by that point.
+func has_action_target(unit: Unit, action: String) -> bool:
+	var unit_data := unit.unit_data
+	var opponents := enemy_units if unit_data.team == UnitData.Team.PLAYER else player_units
+	var allies := player_units if unit_data.team == UnitData.Team.PLAYER else enemy_units
+	var target_pool := allies if action == "heal" else opponents
+	for weapon in unit_data.inventory:
+		if unit_data.character_class != null and not unit_data.character_class.can_use_weapon(weapon.weapon_type):
+			continue
+		if not weapon.matches_action(action):
+			continue
+		var tiles := grid.get_tiles_in_range(unit.grid_pos, weapon.min_range, weapon.max_range)
+		for tile in tiles:
+			var occupant := grid.get_occupant(tile)
+			if occupant == null or not target_pool.has(occupant):
+				continue
+			if action == "heal" and occupant.unit_data.get_current_hp() >= occupant.unit_data.get_max_hp():
+				continue
+			return true
+	return false
 
-## Whether `unit`'s currently equipped weapon can heal at all (see
-## WeaponData.can_heal) — used to decide whether the Heal button should be
-## on the menu in the first place, independent of whether there's actually
-## a valid target in range right now (see has_healable_target below).
+func has_attackable_target(unit: Unit) -> bool:
+	return has_action_target(unit, "attack")
+
+## Whether `unit` owns ANY class-usable heal-capable weapon (see
+## WeaponData.can_heal) — not just whichever's currently equipped, now that
+## choosing Heal can open the weapon-picker to any of them (see
+## start_targeting). Decides whether the Heal button shows up on the menu
+## at all, independent of whether a valid target's actually in range right
+## now (see has_healable_target above, now has_action_target-backed too).
 func weapon_can_heal(unit: Unit) -> bool:
-	var weapon := unit.unit_data.get_equipped_weapon()
-	return weapon != null and weapon.can_heal()
+	return count_action_weapons(unit, "heal") > 0
+
+## Tiles `unit` can reach this turn — normally BattleGrid.compute_move_range,
+## but a frozen unit (see UnitData.is_frozen) can't reach anywhere but its
+## own tile, per the user's call that Freeze blocks movement only, not
+## acting. Single chokepoint so MoveState, the hover-range preview, and
+## EnemyAI all agree on what a unit can actually do this turn.
+func get_move_range(unit: Unit) -> Dictionary:
+	if unit.unit_data.is_frozen():
+		return {unit.grid_pos: 0}
+	return grid.compute_move_range(unit.grid_pos, unit.unit_data.get_mov(), unit.unit_data.team, unit.unit_data.get_movement_type())
 
 ## Whether the unit has anything at all to show in the Equip menu — hidden
 ## only for the edge case of a completely empty inventory. Shown even with
@@ -415,6 +475,70 @@ func weapon_can_heal(unit: Unit) -> bool:
 ## depending on inventory size).
 func can_switch_weapon(unit: Unit) -> bool:
 	return unit.unit_data.inventory.size() > 0
+
+## How many of `unit`'s inventory weapons are both class-usable AND fit
+## `action` (see WeaponData.matches_action) — used by start_targeting below
+## to tell "no real choice" (0 or 1 match) from "a genuine choice exists"
+## (2+), since a weapon the class can't even use isn't a real option.
+func count_action_weapons(unit: Unit, action: String) -> int:
+	var unit_data := unit.unit_data
+	var count := 0
+	for weapon in unit_data.inventory:
+		if unit_data.character_class != null and not unit_data.character_class.can_use_weapon(weapon.weapon_type):
+			continue
+		if weapon.matches_action(action):
+			count += 1
+	return count
+
+## Classic Fire Emblem "choose weapon, then choose target" flow: if `unit`
+## actually has more than one usable weapon for `action` ("attack"/"heal"/
+## "support"), open the weapon-picker first (see WeaponPickerState) instead
+## of jumping straight to targeting with whatever happens to be equipped —
+## picking a weapon there re-equips it AND proceeds into the right
+## targeting state, replacing the old "open Equip, switch, back out, click
+## the action again" round-trip. Skipped when there's 0 or 1 real option,
+## same reasoning MoveState's pre-move Attack/Heal/Support shortcuts
+## already use: don't cost an extra click for a choice that isn't one.
+func start_targeting(unit: Unit, action: String) -> void:
+	var eligible := count_action_weapons(unit, action)
+	if eligible > 1:
+		pending_weapon_picker_action = action
+		state_machine.change_state("weapon_picker")
+		return
+	if eligible == 1:
+		# The one real option still needs to actually BE equipped — skipping
+		# the picker only saves a click if it does. Real bug caught live:
+		# Martin (fire_tome equipped, heal_tome the only heal-capable
+		# weapon) clicking Soigner used to jump straight to heal_targeting
+		# with fire_tome still equipped (can't heal — heal_amount 0), so
+		# nothing was ever a valid target and Soigner silently did nothing.
+		_equip_sole_action_weapon(unit, action)
+	match action:
+		"attack":
+			state_machine.change_state("targeting")
+		"heal":
+			state_machine.change_state("heal_targeting")
+		"support":
+			state_machine.change_state("support_targeting")
+
+## Equips the single weapon that fits `action` (see count_action_weapons)
+## when it isn't already equipped — see start_targeting. No-op if the
+## currently equipped weapon already fits (the common case: a unit with
+## only one attack-capable weapon, which is almost always the one already
+## equipped), so this doesn't spam SignalBus.unit_selected on every attack.
+func _equip_sole_action_weapon(unit: Unit, action: String) -> void:
+	var unit_data := unit.unit_data
+	var current := unit_data.get_equipped_weapon()
+	if current != null and current.matches_action(action):
+		return
+	for i in unit_data.inventory.size():
+		var weapon := unit_data.inventory[i]
+		if unit_data.character_class != null and not unit_data.character_class.can_use_weapon(weapon.weapon_type):
+			continue
+		if weapon.matches_action(action):
+			unit_data.equipped_index = i
+			SignalBus.unit_selected.emit(unit)
+			return
 
 ## Allies (self included — targeting yourself is a valid choice) within the
 ## healer's equipped weapon's range who aren't already at full HP. Empty if
@@ -433,7 +557,7 @@ func get_healable_targets(unit: Unit) -> Array[Unit]:
 	return result
 
 func has_healable_target(unit: Unit) -> bool:
-	return not get_healable_targets(unit).is_empty()
+	return has_action_target(unit, "heal")
 
 ## Resolves a heal: plays the healer's cast animation (a no-op for a rig
 ## that doesn't have one, e.g. anyone but Martin — see
@@ -464,6 +588,92 @@ func _play_heal_effect(target: Unit) -> void:
 	add_child(effect)
 	effect.global_position = target.get_impact_point()
 	effect.play()
+
+## Whether `unit` owns ANY class-usable support gauntlet (see
+## WeaponData.can_support) — not just whichever's currently equipped, same
+## reasoning as weapon_can_heal above. Decides whether the Support button
+## shows up on the menu at all.
+func weapon_can_support(unit: Unit) -> bool:
+	return count_action_weapons(unit, "support") > 0
+
+## Enemies (never allies — support gauntlets only ever target the opposing
+## side, unlike Heal's allies-only pool) within the user's equipped weapon's
+## range. No HP or other filter — unlike get_healable_targets, any enemy in
+## range is a valid target regardless of what Freeze/Knockback would
+## actually do to them.
+func get_support_targets(unit: Unit) -> Array[Unit]:
+	var weapon := unit.unit_data.get_equipped_weapon()
+	if weapon == null or not weapon.can_support():
+		return []
+	var tiles := grid.get_tiles_in_range(unit.grid_pos, weapon.min_range, weapon.max_range)
+	var opponents := enemy_units if unit.unit_data.team == UnitData.Team.PLAYER else player_units
+	var result: Array[Unit] = []
+	for tile in tiles:
+		var occupant := grid.get_occupant(tile)
+		if occupant and opponents.has(occupant):
+			result.append(occupant)
+	return result
+
+func has_support_target(unit: Unit) -> bool:
+	return has_action_target(unit, "support")
+
+## Resolves a support gauntlet use: applies whichever effect the equipped
+## weapon has (see WeaponData.gauntlet_effect) to `target` and consumes
+## `user`'s turn. Like Heal, never rolls to hit — a support gauntlet always
+## lands.
+func execute_support(user: Unit, target: Unit) -> void:
+	var weapon := user.unit_data.get_equipped_weapon()
+	# Fired at target's position BEFORE the effect resolves — reads as "the
+	# gauntlet connects here" the same instant as everything else, whether
+	# that's Freeze (target doesn't move) or Knockback (about to slide away
+	# from this exact spot). Fire-and-forget, same as _play_heal_effect.
+	_play_support_effect(target, weapon.gauntlet_effect)
+	match weapon.gauntlet_effect:
+		WeaponData.GauntletEffect.FREEZE:
+			target.unit_data.apply_freeze(weapon.freeze_duration)
+			_show_strike_message(target, "Gelé (%dt)" % weapon.freeze_duration, Color(0.55, 0.85, 1.0))
+		WeaponData.GauntletEffect.KNOCKBACK:
+			await _apply_knockback(user, target, weapon.knockback_distance)
+	user.has_acted = true
+
+## Spawns the gauntlet-support burst (see SupportEffect) on `target` —
+## mirrors _play_heal_effect's placement (get_impact_point, not raw
+## global_position, so it reads centered on the body rather than the feet).
+func _play_support_effect(target: Unit, effect: WeaponData.GauntletEffect) -> void:
+	if not is_instance_valid(target):
+		return
+	var effect_node: SupportEffect = SUPPORT_EFFECT_SCENE.instantiate()
+	add_child(effect_node)
+	effect_node.global_position = target.get_impact_point()
+	effect_node.play(effect)
+
+## Pushes `target` up to `distance` tiles directly away from `user`, along
+## whichever grid axis (horizontal/vertical) the offset between them leans
+## more on — targets are rarely on a perfectly cardinal line (weapon range
+## is Manhattan distance, so a diagonal-ish offset is possible), and this
+## is the simplest rule that always yields a real push direction. Stops
+## early at the last free tile (BattleGrid.is_free) if a wall, another
+## unit, or the map edge blocks the rest of the distance — per the user's
+## call, partial knockback beats an all-or-nothing push. A fully boxed-in
+## target just doesn't move at all; still a valid (if uneventful) use.
+func _apply_knockback(user: Unit, target: Unit, distance: int) -> void:
+	var delta := target.grid_pos - user.grid_pos
+	var dir := Vector2i(signi(delta.x), 0) if absi(delta.x) >= absi(delta.y) else Vector2i(0, signi(delta.y))
+	if dir == Vector2i.ZERO:
+		return
+	var path: Array[Vector2i] = []
+	var pos := target.grid_pos
+	for i in distance:
+		var next: Vector2i = pos + dir
+		if not grid.is_free(next):
+			break
+		path.append(next)
+		pos = next
+	if path.is_empty():
+		return
+	grid.clear_occupant(target.grid_pos)
+	await target.move_along_path(path, grid)
+	grid.set_occupant(target.grid_pos, target)
 
 ## Snaps `unit` back to selected_unit_start_pos and clears has_moved, so
 ## ActionMenuState.handle_cancel can send the player back to "move" instead
@@ -528,7 +738,7 @@ func _compute_combat_stats(attacker: Unit, defender: Unit) -> Dictionary:
 	var distance := absi(attacker.grid_pos.x - defender.grid_pos.x) + absi(attacker.grid_pos.y - defender.grid_pos.y)
 	var attacker_terrain := grid.get_terrain_combat_bonus(attacker.grid_pos)
 	var defender_terrain := grid.get_terrain_combat_bonus(defender.grid_pos)
-	var defender_can_counter := CombatResolver.is_in_weapon_range(distance, defender.unit_data.get_equipped_weapon())
+	var defender_can_counter := CombatResolver.is_in_weapon_range(distance, defender.unit_data.get_combat_weapon())
 	var attacker_hits := 2 if CombatResolver.can_double(attacker.unit_data, defender.unit_data) else 1
 	var defender_hits := 0
 	if defender_can_counter:
@@ -551,7 +761,10 @@ func _compute_combat_stats(attacker: Unit, defender: Unit) -> Dictionary:
 ## do — used both to skip the initial stage-approach step and each strike's
 ## forward lunge for whichever side is equipped this way.
 func _is_ranged(unit: Unit) -> bool:
-	var weapon := unit.unit_data.get_equipped_weapon()
+	# get_combat_weapon (not get_equipped_weapon) — a unit countering with a
+	# support gauntlet equipped should stage/lunge based on the REAL weapon
+	# it's fighting with, not the gauntlet it happens to be holding.
+	var weapon := unit.unit_data.get_combat_weapon()
 	return weapon != null and weapon.weapon_type in [WeaponData.WeaponType.BOW, WeaponData.WeaponType.TOME]
 
 ## Zooms the camera in on the pair and steps them toward each other, shows
@@ -609,7 +822,11 @@ func _play_combat_scene(attacker: Unit, defender: Unit, log: Array, stats: Dicti
 		if not is_instance_valid(source):
 			continue
 		await get_tree().create_timer(PRE_STRIKE_DELAY).timeout
-		var source_weapon := source.unit_data.get_equipped_weapon()
+		# get_combat_weapon — see CombatResolver's own doc comment; the hit
+		# VFX/SFX picked from this must match whatever weapon the strike was
+		# actually resolved with, which may be a counter-attacker's real
+		# weapon rather than a support gauntlet they still have equipped.
+		var source_weapon := source.unit_data.get_combat_weapon()
 		if _is_ranged(source):
 			# No forward lunge for a ranged strike — casting/shooting in
 			# place, the projectile (spawned by the rig itself, synced to a

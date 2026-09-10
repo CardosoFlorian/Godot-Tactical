@@ -4,13 +4,24 @@ extends RefCounted
 ## resolution. Kept side-effect free (aside from applying HP changes to the
 ## UnitData passed in) so the same functions serve both real combat
 ## resolution and enemy AI prediction/scoring.
+##
+## Uses UnitData.get_combat_weapon() throughout, never get_equipped_weapon()
+## directly — identical for a normal weapon, but falls back to the unit's
+## last real attack weapon if what's currently equipped is a non-combat
+## support gauntlet (see UnitData.last_combat_equipped_index). Matters for
+## counter-attacks specifically: a unit can never INITIATE an attack while
+## holding a pure-support gauntlet (Battle.get_attackable_targets_from
+## already blocks that), but it can still end up DEFENDING with one
+## equipped, and should fight back with whatever it last actually attacked
+## with — same idea as Fire Emblem Engage countering with your last weapon
+## instead of the staff you just healed with.
 
 const DOUBLE_ATTACK_SPD_THRESHOLD := 5
 const CRIT_DAMAGE_MULTIPLIER := 3
 
 static func _triangle_mods(attacker: UnitData, defender: UnitData) -> Dictionary:
-	var atk_weapon := attacker.get_equipped_weapon()
-	var def_weapon := defender.get_equipped_weapon()
+	var atk_weapon := attacker.get_combat_weapon()
+	var def_weapon := defender.get_combat_weapon()
 	if atk_weapon == null or def_weapon == null:
 		return {"hit": 0, "might": 0}
 	return WeaponTriangle.get_modifiers(atk_weapon.weapon_type, def_weapon.weapon_type)
@@ -23,14 +34,14 @@ static func _is_magic(weapon: WeaponData) -> bool:
 ## both doubling and avoid — a unit weighed down by its weapon is easier to
 ## hit as well as slower to strike twice.
 static func get_effective_spd(unit: UnitData) -> int:
-	var weapon := unit.get_equipped_weapon()
+	var weapon := unit.get_combat_weapon()
 	if weapon == null:
 		return unit.get_spd()
 	var penalty := maxi(0, weapon.weight - unit.get_con())
 	return maxi(0, unit.get_spd() - penalty)
 
 static func get_hit_chance(attacker: UnitData, defender: UnitData, terrain_avoid_bonus: int = 0) -> int:
-	var weapon := attacker.get_equipped_weapon()
+	var weapon := attacker.get_combat_weapon()
 	if weapon == null:
 		return 0
 	var mods := _triangle_mods(attacker, defender)
@@ -39,7 +50,7 @@ static func get_hit_chance(attacker: UnitData, defender: UnitData, terrain_avoid
 	return clampi(attack_hit - avoid, 0, 100)
 
 static func get_crit_chance(attacker: UnitData, defender: UnitData) -> int:
-	var weapon := attacker.get_equipped_weapon()
+	var weapon := attacker.get_combat_weapon()
 	if weapon == null:
 		return 0
 	var crit := weapon.crit + attacker.get_skl() / 2 - defender.get_lck()
@@ -50,7 +61,7 @@ static func get_crit_chance(attacker: UnitData, defender: UnitData) -> int:
 ## already return {0,0} from _triangle_mods since the triangle only knows
 ## Sword/Lance/Axe).
 static func get_damage(attacker: UnitData, defender: UnitData, terrain_def_bonus: int = 0) -> int:
-	var weapon := attacker.get_equipped_weapon()
+	var weapon := attacker.get_combat_weapon()
 	if weapon == null:
 		return 0
 	if _is_magic(weapon):
@@ -74,7 +85,7 @@ static func is_in_weapon_range(distance: int, weapon: WeaponData) -> bool:
 ## rolling any RNG: expected_damage accounts for hit% and crit%, and for a
 ## potential follow-up hit if the attacker doubles.
 static func predict_expected_damage(attacker: UnitData, defender: UnitData, terrain_def_bonus: int = 0, terrain_avoid_bonus: int = 0) -> float:
-	if attacker.get_equipped_weapon() == null:
+	if attacker.get_combat_weapon() == null:
 		return 0.0
 	var hit := get_hit_chance(attacker, defender, terrain_avoid_bonus) / 100.0
 	var crit := get_crit_chance(attacker, defender) / 100.0
@@ -92,7 +103,7 @@ static func predict_expected_damage(attacker: UnitData, defender: UnitData, terr
 ## struck. Returns a log of individual strikes for UI/replay.
 static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int, rng: RandomNumberGenerator, attacker_terrain: Dictionary = {}, defender_terrain: Dictionary = {}) -> Dictionary:
 	var log: Array[Dictionary] = []
-	var defender_weapon := defender.get_equipped_weapon()
+	var defender_weapon := defender.get_combat_weapon()
 	var defender_can_counter := is_in_weapon_range(distance, defender_weapon)
 
 	## Classic GBA Fire Emblem order: attacker's first strike, then the
@@ -116,7 +127,7 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 		var terrain_avoid: int = terrain.get("avoid", 0)
 		if not source.is_alive() or not target.is_alive():
 			continue
-		if source.get_equipped_weapon() == null:
+		if source.get_combat_weapon() == null:
 			continue
 		var hit_chance := get_hit_chance(source, target, terrain_avoid)
 		var roll := rng.randi_range(1, 100)
@@ -131,7 +142,7 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 			if did_crit:
 				damage *= CRIT_DAMAGE_MULTIPLIER
 			target.set_current_hp(target.get_current_hp() - damage)
-			var source_weapon := source.get_equipped_weapon()
+			var source_weapon := source.get_combat_weapon()
 			if source_weapon and source_weapon.can_debuff():
 				target.apply_debuff(source_weapon)
 				debuff_weapon = source_weapon

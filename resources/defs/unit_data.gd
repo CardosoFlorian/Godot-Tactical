@@ -24,7 +24,27 @@ const MAX_INVENTORY_SIZE := 5
 
 @export_group("Equipment")
 @export var inventory: Array[WeaponData] = []
-@export var equipped_index: int = 0
+## Custom setter keeps last_combat_equipped_index in sync automatically,
+## from every source (EquipMenuState, Battle.revert_equipped_weapon,
+## promote, .tres loading) without each call site needing to remember to —
+## see last_combat_equipped_index below for why that index exists.
+@export var equipped_index: int = 0:
+	set(value):
+		equipped_index = value
+		if value >= 0 and value < inventory.size() and not inventory[value].can_support():
+			last_combat_equipped_index = value
+
+## Battle-only (like active_debuffs/frozen_turns_remaining below), not
+## @export. Index into inventory of the last REAL attack weapon (one where
+## can_support() is false) this unit had equipped. A pure support gauntlet
+## can't fight back with — see get_combat_weapon() below and CombatResolver,
+## which uses it instead of get_equipped_weapon() for counter-attacks, same
+## as Fire Emblem Engage has a staff-user counter with their last real
+## weapon instead of the staff. Defaults to 0 since every unit's starting
+## inventory slot 0 is a real weapon; Unit.setup() re-derives it properly
+## from the unit's actual starting equipped_index regardless, as a safety
+## net against .tres property-load ordering.
+var last_combat_equipped_index: int = 0
 
 @export_group("Portraits & sprites")
 @export var portrait: Texture2D
@@ -93,6 +113,23 @@ func get_debuff_total(stat: WeaponData.DebuffStat) -> int:
 			total += weapon.debuff_amount
 	return total
 
+## Battle-only, like active_debuffs above (cleared on battle entry, not
+## @export). Boolean in effect — reapplying just resets the clock rather
+## than stacking duration, same refresh idea active_debuffs uses, just
+## simpler since there's no magnitude to track per-source, only "frozen or
+## not". Blocks movement only (see Battle.get_move_range) — a frozen unit
+## can still attack from wherever it's standing, per the user's own call.
+var frozen_turns_remaining: int = 0
+
+func apply_freeze(duration: int) -> void:
+	frozen_turns_remaining = duration
+
+func tick_freeze() -> void:
+	frozen_turns_remaining = maxi(0, frozen_turns_remaining - 1)
+
+func is_frozen() -> bool:
+	return frozen_turns_remaining > 0
+
 ## Returns null (treated as unarmed) if the inventory is empty OR the
 ## equipped weapon isn't one this class is allowed to use — classes are
 ## locked old-school-Fire-Emblem style, so this is real enforcement, not
@@ -105,6 +142,21 @@ func get_equipped_weapon() -> WeaponData:
 		push_warning("%s's class (%s) can't use %s — treating as unarmed." % [display_name, character_class.display_name, weapon.display_name])
 		return null
 	return weapon
+
+## What this unit actually fights with — the equipped weapon normally, but
+## the last REAL attack weapon (see last_combat_equipped_index) if what's
+## currently equipped is a non-combat support gauntlet. CombatResolver uses
+## this instead of get_equipped_weapon() everywhere, so a unit caught
+## defending with a gauntlet equipped still counters with whatever it last
+## had in hand instead of being unable to fight back at all (or "attacking"
+## with a 0-might glove).
+func get_combat_weapon() -> WeaponData:
+	var weapon := get_equipped_weapon()
+	if weapon == null or not weapon.can_support():
+		return weapon
+	if last_combat_equipped_index < 0 or last_combat_equipped_index >= inventory.size():
+		return null
+	return inventory[last_combat_equipped_index]
 
 func _growth_bonus(growth_percent: int) -> int:
 	return int(float(growth_percent) / 100.0 * float(level - 1))

@@ -2,7 +2,7 @@ class_name UnitInfoPanel
 extends PanelContainer
 
 ## Indexed by WeaponData.WeaponType (SWORD=0, LANCE=1, AXE=2, BOW=3, TOME=4,
-## SCYTHE=5).
+## SCYTHE=5, GAUNTLET=6).
 const PROFICIENCY_ICONS: Array[Texture2D] = [
 	preload("res://assets/ui/weapon_icons/sword.png"),
 	preload("res://assets/ui/weapon_icons/lance.png"),
@@ -10,6 +10,7 @@ const PROFICIENCY_ICONS: Array[Texture2D] = [
 	preload("res://assets/ui/weapon_icons/bow.png"),
 	preload("res://assets/ui/weapon_icons/tome.png"),
 	preload("res://assets/ui/weapon_icons/scythe.png"),
+	preload("res://assets/ui/weapon_icons/gauntlet.png"),
 ]
 
 ## Reset color for a stat Label once any debuff on it expires — see _set_stat.
@@ -37,6 +38,7 @@ const MOVEMENT_ICONS: Array[Texture2D] = [
 	$VBox/ClassRow/ProficiencyIcons/Bow,
 	$VBox/ClassRow/ProficiencyIcons/Tome,
 	$VBox/ClassRow/ProficiencyIcons/Scythe,
+	$VBox/ClassRow/ProficiencyIcons/Gauntlet,
 ]
 @onready var hp_bar: ProgressBar = $VBox/HPBar
 @onready var hp_label: Label = $VBox/HPBar/HPLabel

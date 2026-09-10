@@ -142,6 +142,17 @@ func find_path(start: Vector2i, end: Vector2i, mover_team: int, movement_type: i
 		result.append(p)
 	return result
 
+## Whether `pos` could be knocked a unit onto right now — in bounds, not a
+## wall/impassable tile, and not already occupied by anyone. Team-agnostic
+## (unlike compute_move_range's solidity, which only blocks the OPPOSING
+## team) since a forced push shouldn't be able to shove one unit into
+## another regardless of side.
+func is_free(pos: Vector2i) -> bool:
+	if not is_in_bounds(pos):
+		return false
+	var terrain := get_terrain(pos)
+	return terrain != null and not terrain.impassable and not is_occupied(pos)
+
 func get_tiles_in_range(center: Vector2i, min_range: int, max_range: int) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	for y in range(-max_range, max_range + 1):

@@ -54,10 +54,15 @@ func setup(data: UnitData, start_pos: Vector2i, grid: BattleGrid) -> void:
 	unit_data = data
 	grid_pos = start_pos
 	position = grid.grid_to_world(start_pos)
-	# Debuffs are battle-only (unlike current_hp, which intentionally
+	# Debuffs/freeze are battle-only (unlike current_hp, which intentionally
 	# persists) — a safety net in case a unit's UnitData somehow still
 	# carries one in from a previous fight.
 	unit_data.active_debuffs.clear()
+	unit_data.frozen_turns_remaining = 0
+	# Re-derive from the unit's actual starting loadout, regardless of
+	# whatever order .tres properties happened to deserialize in — see
+	# UnitData.last_combat_equipped_index.
+	unit_data.equipped_index = unit_data.equipped_index
 	_refresh_sprite()
 
 ## Acted units are visibly dimmed so it's never ambiguous whether they can

@@ -11,12 +11,18 @@ extends BattleState
 
 func enter(_previous_state_name: String = "") -> void:
 	var unit := battle.selected_unit
-	battle.move_range = battle.grid.compute_move_range(unit.grid_pos, unit.unit_data.get_mov(), unit.unit_data.team, unit.unit_data.get_movement_type())
+	# get_move_range (not grid.compute_move_range directly) — a frozen unit's
+	# range is just its own tile, see Battle.get_move_range.
+	battle.move_range = battle.get_move_range(unit)
 	battle.grid.clear_highlight()
 	battle.show_unit_range(unit, battle.move_range)
 	SignalBus.move_range_shown.emit(battle.move_range)
 	var weapon_can_heal := battle.weapon_can_heal(unit)
-	battle.ui.show_move_menu(battle.has_attackable_target(unit), weapon_can_heal, weapon_can_heal and battle.has_healable_target(unit), battle.can_switch_weapon(unit))
+	var weapon_can_support := battle.weapon_can_support(unit)
+	# Trailing `true` is can_wait — always available pre-move (see
+	# ActionMenu.show_for_move's own doc comment for why every OTHER caller
+	# of show_move_menu leaves it at its false default instead).
+	battle.ui.show_move_menu(battle.has_attackable_target(unit), weapon_can_heal, weapon_can_heal and battle.has_healable_target(unit), weapon_can_support, weapon_can_support and battle.has_support_target(unit), battle.can_switch_weapon(unit), true)
 
 func exit() -> void:
 	battle.ui.hide_action_menu()
@@ -47,12 +53,17 @@ func handle_action_chosen(action_name: String) -> void:
 			if not battle.has_attackable_target(unit):
 				return
 			await _move_to(unit.grid_pos)
-			state_machine.change_state("targeting")
+			battle.start_targeting(unit, "attack")
 		"heal":
 			if not battle.has_healable_target(unit):
 				return
 			await _move_to(unit.grid_pos)
-			state_machine.change_state("heal_targeting")
+			battle.start_targeting(unit, "heal")
+		"support":
+			if not battle.has_support_target(unit):
+				return
+			await _move_to(unit.grid_pos)
+			battle.start_targeting(unit, "support")
 		"equip":
 			if not battle.can_switch_weapon(unit):
 				return

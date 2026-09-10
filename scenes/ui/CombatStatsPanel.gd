@@ -48,7 +48,11 @@ func show_unit(data: UnitData, dmg: int, hit: int, crit: int, can_act: bool, inc
 	style.set_corner_radius_all(4)
 	name_banner.add_theme_stylebox_override("panel", style)
 
-	var weapon := data.get_equipped_weapon()
+	# get_combat_weapon (not get_equipped_weapon) — this panel shows what the
+	# unit will actually FIGHT with, which for a unit defending with a
+	# support gauntlet equipped is its last real attack weapon, not the
+	# gauntlet the Dmg/Hit/Crit numbers below wouldn't otherwise match.
+	var weapon := data.get_combat_weapon()
 	weapon_label.text = weapon.display_name if weapon else "A mains nues"
 	weapon_icon.texture = weapon.icon if weapon else null
 	weapon_icon.visible = weapon_icon.texture != null

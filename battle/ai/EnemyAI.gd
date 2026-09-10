@@ -12,7 +12,9 @@ const KILL_BONUS := 30.0
 
 static func take_turn(unit: Unit, battle: Battle) -> void:
 	var data := unit.unit_data
-	var reachable: Dictionary = battle.grid.compute_move_range(unit.grid_pos, data.get_mov(), data.team, data.get_movement_type())
+	# get_move_range (not grid.compute_move_range directly) — a frozen enemy
+	# can't reach anywhere but its own tile this turn, see Battle.get_move_range.
+	var reachable: Dictionary = battle.get_move_range(unit)
 
 	var best_tile: Vector2i = unit.grid_pos
 	var best_target: Unit = null
@@ -25,7 +27,10 @@ static func take_turn(unit: Unit, battle: Battle) -> void:
 			var expected_dealt := CombatResolver.predict_expected_damage(data, target.unit_data, target_terrain["def"], target_terrain["avoid"])
 			var distance := absi(tile.x - target.grid_pos.x) + absi(tile.y - target.grid_pos.y)
 			var expected_taken := 0.0
-			if CombatResolver.is_in_weapon_range(distance, target.unit_data.get_equipped_weapon()):
+			# get_combat_weapon — a target that would counter with a support
+			# gauntlet equipped actually counters with its last real weapon
+			# (see CombatResolver), the AI's risk estimate should too.
+			if CombatResolver.is_in_weapon_range(distance, target.unit_data.get_combat_weapon()):
 				var my_terrain := battle.grid.get_terrain_combat_bonus(tile)
 				expected_taken = CombatResolver.predict_expected_damage(target.unit_data, data, my_terrain["def"], my_terrain["avoid"])
 			var score := expected_dealt - expected_taken * RISK_WEIGHT

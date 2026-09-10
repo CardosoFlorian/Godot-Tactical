@@ -15,9 +15,14 @@ func enter(_previous_state_name: String = "") -> void:
 	# just be clutter for them.
 	var weapon_can_heal := battle.weapon_can_heal(unit)
 	var can_heal := weapon_can_heal and battle.has_healable_target(unit)
+	# Support (freeze/knockback gauntlets) follows the exact same
+	# hidden-unless-equipped, disabled-unless-a-target's-in-range split as
+	# Heal above.
+	var weapon_can_support := battle.weapon_can_support(unit)
+	var can_support := weapon_can_support and battle.has_support_target(unit)
 	var can_promote := unit.unit_data.can_promote()
 	SignalBus.action_menu_opened.emit(unit)
-	battle.ui.show_action_menu(unit, can_attack, weapon_can_heal, can_heal, can_promote, battle.can_switch_weapon(unit))
+	battle.ui.show_action_menu(unit, can_attack, weapon_can_heal, can_heal, weapon_can_support, can_support, can_promote, battle.can_switch_weapon(unit))
 
 func exit() -> void:
 	battle.ui.hide_action_menu()
@@ -26,9 +31,11 @@ func handle_action_chosen(action_name: String) -> void:
 	var unit := battle.selected_unit
 	match action_name:
 		"attack":
-			state_machine.change_state("targeting")
+			battle.start_targeting(unit, "attack")
 		"heal":
-			state_machine.change_state("heal_targeting")
+			battle.start_targeting(unit, "heal")
+		"support":
+			battle.start_targeting(unit, "support")
 		"wait":
 			unit.has_acted = true
 			state_machine.change_state("unit_select")
