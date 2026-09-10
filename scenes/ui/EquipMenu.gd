@@ -31,8 +31,7 @@ func show_for_unit(unit_data: UnitData, for_action: String = "") -> void:
 		var weapon: WeaponData = unit_data.inventory[i]
 		var row: EquipMenuRow = ROW_SCENE.instantiate()
 		row_list.add_child(row)
-		var is_class_usable := unit_data.character_class != null and unit_data.character_class.can_use_weapon(weapon.weapon_type)
-		var is_usable := is_class_usable and weapon.matches_action(for_action)
+		var is_usable := unit_data.can_use_weapon(weapon.weapon_type) and weapon.matches_action(for_action)
 		row.setup(weapon, i, i == unit_data.equipped_index, is_usable)
 		row.row_selected.connect(func(idx: int): weapon_selected.emit(idx))
 	show()

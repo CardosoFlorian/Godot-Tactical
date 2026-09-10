@@ -99,6 +99,8 @@ const CRIT_PORTRAIT_DURATION := 0.45
 @onready var camera: Camera2D = $Camera2D
 @onready var combat_stats: CombatStatsHUD = $CombatStatsHUD
 @onready var heal_preview: HealPreviewPanel = $HealPreviewLayer/HealPreviewPanel
+@onready var level_up_screen: LevelUpScreen = $LevelUpLayer/LevelUpScreen
+@onready var exp_gain_overlay: ExpGainOverlay = $ExpGainLayer/ExpGainOverlay
 @onready var _crit_flash: ColorRect = $CritFlashLayer/CritFlash
 @onready var _crit_portrait_layer: CanvasLayer = $CritPortraitLayer
 @onready var _crit_portrait_rect: TextureRect = $CritPortraitLayer/Portrait
@@ -144,7 +146,6 @@ func _ready() -> void:
 	ui.equip_pressed.connect(func(): state_machine.handle_action_chosen("equip"))
 	ui.weapon_selected.connect(func(i: int): state_machine.handle_weapon_selected(i))
 	ui.wait_pressed.connect(func(): state_machine.handle_action_chosen("wait"))
-	ui.promote_pressed.connect(func(): state_machine.handle_action_chosen("promote"))
 	ui.cancel_pressed.connect(func(): state_machine.handle_cancel())
 	ui.end_turn_pressed.connect(_on_end_turn_pressed)
 	state_machine.setup(self)
@@ -432,7 +433,7 @@ func has_action_target(unit: Unit, action: String) -> bool:
 	var allies := player_units if unit_data.team == UnitData.Team.PLAYER else enemy_units
 	var target_pool := allies if action == "heal" else opponents
 	for weapon in unit_data.inventory:
-		if unit_data.character_class != null and not unit_data.character_class.can_use_weapon(weapon.weapon_type):
+		if not unit_data.can_use_weapon(weapon.weapon_type):
 			continue
 		if not weapon.matches_action(action):
 			continue
@@ -484,7 +485,7 @@ func count_action_weapons(unit: Unit, action: String) -> int:
 	var unit_data := unit.unit_data
 	var count := 0
 	for weapon in unit_data.inventory:
-		if unit_data.character_class != null and not unit_data.character_class.can_use_weapon(weapon.weapon_type):
+		if not unit_data.can_use_weapon(weapon.weapon_type):
 			continue
 		if weapon.matches_action(action):
 			count += 1
@@ -533,7 +534,7 @@ func _equip_sole_action_weapon(unit: Unit, action: String) -> void:
 		return
 	for i in unit_data.inventory.size():
 		var weapon := unit_data.inventory[i]
-		if unit_data.character_class != null and not unit_data.character_class.can_use_weapon(weapon.weapon_type):
+		if not unit_data.can_use_weapon(weapon.weapon_type):
 			continue
 		if weapon.matches_action(action):
 			unit_data.equipped_index = i
@@ -575,6 +576,7 @@ func execute_heal(healer: Unit, target: Unit) -> void:
 	target.unit_data.set_current_hp(new_hp)
 	_play_heal_effect(target)
 	_show_strike_message(target, "+%d" % amount, Color(0.4, 1.0, 0.4))
+	await _grant_action_exp(healer)
 	healer.has_acted = true
 
 ## Spawns the green sparkle burst (see HealEffect) on `target` the instant
@@ -634,6 +636,7 @@ func execute_support(user: Unit, target: Unit) -> void:
 			_show_strike_message(target, "Gelé (%dt)" % weapon.freeze_duration, Color(0.55, 0.85, 1.0))
 		WeaponData.GauntletEffect.KNOCKBACK:
 			await _apply_knockback(user, target, weapon.knockback_distance)
+	await _grant_action_exp(user)
 	user.has_acted = true
 
 ## Spawns the gauntlet-support burst (see SupportEffect) on `target` —
@@ -721,9 +724,86 @@ func execute_attack(attacker: Unit, defender: Unit) -> void:
 	SignalBus.combat_resolved.emit(result)
 
 	await _play_combat_scene(attacker, defender, result["log"], stats, attacker_hp_before, defender_hp_before)
+	await _award_combat_exp(attacker, defender, result["log"])
 	apply_combat_aftermath(attacker, defender)
 	if is_instance_valid(attacker):
 		attacker.has_acted = true
+
+## Awards XP to whichever of `attacker`/`defender` are PLAYER-team units
+## that actually swung (appear as a `source` entry in `log`) and are still
+## alive — a unit that died in this exchange doesn't get XP for its own
+## last swing, same as real Fire Emblem never shows a level-up for a unit
+## about to be removed. Called BEFORE apply_combat_aftermath's death/
+## removal on purpose: HP and death are already final by this point
+## (CombatResolver.resolve_combat applies every strike synchronously), this
+## is purely about showing the level-up reveal before the corpse
+## disappears from player_units/enemy_units, not about ordering HP itself.
+func _award_combat_exp(attacker: Unit, defender: Unit, log: Array) -> void:
+	for unit in [attacker, defender]:
+		if not is_instance_valid(unit) or unit.unit_data.team != UnitData.Team.PLAYER or not unit.unit_data.is_alive():
+			continue
+		var opponent := defender if unit == attacker else attacker
+		var swung := false
+		var killed_opponent := false
+		for entry in log:
+			if entry["source"] != unit.unit_data:
+				continue
+			swung = true
+			if entry["target"] == opponent.unit_data and not opponent.unit_data.is_alive():
+				killed_opponent = true
+		if not swung:
+			continue
+		var amount := clampi(UnitData.EXP_BASE + (opponent.unit_data.level - unit.unit_data.level) * UnitData.EXP_LEVEL_DIFF_MULT, UnitData.EXP_MIN, UnitData.EXP_MAX)
+		if killed_opponent:
+			amount += UnitData.EXP_KILL_BONUS
+		await _grant_exp_and_show_level_ups(unit, amount)
+
+## Flat EXP_BASE for a PLAYER-team unit successfully using Heal/Support —
+## no opponent-level reference point for a non-damage action, unlike
+## _award_combat_exp's per-attack formula. No-op for an enemy (or ally-team)
+## unit.
+func _grant_action_exp(unit: Unit) -> void:
+	if unit.unit_data.team != UnitData.Team.PLAYER:
+		return
+	await _grant_exp_and_show_level_ups(unit, UnitData.EXP_BASE)
+
+## Applies the XP, playing the fill animation on the big centered
+## ExpGainOverlay (2026-09-10: moved off UnitInfoPanel's small corner bar —
+## user preferred the animating bar be center-screen; the corner bar is
+## still there as a static reference, just doesn't animate itself anymore)
+## and awaiting the level-up screen once per level actually gained (see
+## UnitData.gain_exp). No-op for a character_class != null unit — regular
+## enemies never level up mid-battle, gain_exp already returns empty for
+## them, so there's nothing to animate. A multi-level grant plays as
+## several fill-to-100 segments, snapping back to 0 between each (real Fire
+## Emblem doesn't animate the bar draining backward on a level-up, it just
+## resets) with the overlay hidden right before each LevelUpScreen reveal,
+## then one final fill for whatever's left over after the last level.
+## Re-emits SignalBus.unit_selected once done if any level was gained, so
+## UnitInfoPanel's stats/level number/corner EXP bar all catch up too —
+## same "mutated unit_data, re-emit to refresh" convention EquipMenuState
+## already established for weapon switches.
+func _grant_exp_and_show_level_ups(unit: Unit, amount: int) -> void:
+	var unit_data := unit.unit_data
+	if unit_data.character_class != null:
+		return
+	var starting_exp := unit_data.exp
+	var level_ups := unit_data.gain_exp(amount)
+	if level_ups.is_empty():
+		await exp_gain_overlay.animate_fill(unit_data, starting_exp, unit_data.exp)
+		exp_gain_overlay.hide_overlay()
+		return
+	var segment_start := starting_exp
+	for entry in level_ups:
+		await exp_gain_overlay.animate_fill(unit_data, segment_start, 100)
+		exp_gain_overlay.set_immediate(0)
+		segment_start = 0
+		exp_gain_overlay.hide_overlay()
+		await level_up_screen.show_level_up(unit_data, entry)
+	if unit_data.exp > 0:
+		await exp_gain_overlay.animate_fill(unit_data, 0, unit_data.exp)
+	exp_gain_overlay.hide_overlay()
+	SignalBus.unit_selected.emit(unit)
 
 ## Dmg/Hit/Crit each combatant would deal against the other at their
 ## current positions — used both for the real combat scene and for the

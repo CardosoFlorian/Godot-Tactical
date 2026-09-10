@@ -1,24 +1,47 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://resources/defs/unit_data.gd" id="1"]
-[ext_resource type="Resource" path="res://data/classes/mage.tres" id="2"]
 [ext_resource type="Resource" path="res://data/weapons/fire_tome.tres" id="3"]
 [ext_resource type="Texture2D" path="res://assets/placeholder/units/player_tome.png" id="4"]
 [ext_resource type="Texture2D" path="res://assets/placeholder/portraits/martin/neutral.png" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/battle/units/MartinBattleSprite.tscn" id="6"]
 [ext_resource type="Resource" path="res://data/weapons/heal_tome.tres" id="7"]
+[ext_resource type="Texture2D" path="res://assets/units/martin/full_body.png" id="8"]
 
 [resource]
 script = ExtResource("1")
 character_id = "martin"
 display_name = "Martin"
-character_class = ExtResource("2")
 level = 1
 team = 0
 permadeath = true
+class_display_name = "Mage"
+movement_type = 0
+usable_weapon_types = Array[int]([4])
+exp = 0
+base_hp = 17
+base_str = 3
+base_mag = 6
+base_skl = 6
+base_spd = 7
+base_lck = 5
+base_def = 2
+base_res = 6
+base_con = 5
+base_mov = 5
+growth_hp = 60
+growth_str = 10
+growth_mag = 45
+growth_skl = 35
+growth_spd = 30
+growth_lck = 25
+growth_def = 10
+growth_res = 30
+growth_con = 0
 inventory = Array[WeaponData]([ExtResource("3"), ExtResource("7")])
 equipped_index = 0
 portrait = ExtResource("5")
+full_body = ExtResource("8")
 battle_sprite = ExtResource("4")
 rigged_battle_sprite = ExtResource("6")
 ai_behavior = 0

@@ -1,7 +1,14 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/UnitInfoPanel.gd" id="1"]
 [ext_resource type="StyleBoxTexture" path="res://assets/ui/panel_frame_style.tres" id="2"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_expfill"]
+bg_color = Color(0.25, 0.55, 0.95, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
 
 [node name="UnitInfoPanel" type="PanelContainer"]
 anchors_preset = 0
@@ -102,6 +109,24 @@ anchor_bottom = 1.0
 horizontal_alignment = 1
 vertical_alignment = 1
 text = "20 / 20"
+
+[node name="ExpBar" type="ProgressBar" parent="VBox"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+theme_override_styles/fill = SubResource("StyleBoxFlat_expfill")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="ExpLabel" type="Label" parent="VBox/ExpBar"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 10
+text = "XP 0 / 100"
 
 [node name="StatGrid" type="GridContainer" parent="VBox"]
 layout_mode = 2

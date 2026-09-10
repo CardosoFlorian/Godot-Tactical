@@ -12,7 +12,6 @@ signal support_pressed
 signal equip_pressed
 signal weapon_selected(index: int)
 signal wait_pressed
-signal promote_pressed
 signal cancel_pressed
 signal end_turn_pressed
 
@@ -32,7 +31,6 @@ func _ready() -> void:
 	action_menu.support_pressed.connect(func(): support_pressed.emit())
 	action_menu.equip_pressed.connect(func(): equip_pressed.emit())
 	action_menu.wait_pressed.connect(func(): wait_pressed.emit())
-	action_menu.promote_pressed.connect(func(): promote_pressed.emit())
 	action_menu.cancel_pressed.connect(func(): cancel_pressed.emit())
 	equip_menu.weapon_selected.connect(func(i: int): weapon_selected.emit(i))
 	equip_menu.cancel_pressed.connect(func(): cancel_pressed.emit())
@@ -52,8 +50,8 @@ func hide_hover_unit() -> void:
 	hover_info_panel.hide_panel()
 
 ## Move phase: same panel as the action menu, but only Cancel (and
-## Attack/Heal/Support, when enabled) is clickable — Wait shows enabled too,
-## Promote hidden — so the layout doesn't jump between phases.
+## Attack/Heal/Support, when enabled) is clickable — Wait shows enabled too
+## — so the layout doesn't jump between phases.
 func show_move_menu(can_attack: bool = false, weapon_can_heal: bool = false, can_heal: bool = false, weapon_can_support: bool = false, can_support: bool = false, can_switch_weapon: bool = false, can_wait: bool = false) -> void:
 	action_menu.show_for_move(can_attack, weapon_can_heal, can_heal, weapon_can_support, can_support, can_switch_weapon, can_wait)
 
@@ -64,8 +62,8 @@ func show_move_menu(can_attack: bool = false, weapon_can_heal: bool = false, can
 ## right now (controls whether they're clickable, same as `can_attack`).
 ## `can_switch_weapon`: whether the unit has more than one weapon in
 ## inventory — controls whether the Equip button shows up at all.
-func show_action_menu(_unit, can_attack: bool, weapon_can_heal: bool = false, can_heal: bool = false, weapon_can_support: bool = false, can_support: bool = false, can_promote: bool = false, can_switch_weapon: bool = false) -> void:
-	action_menu.show_for_action(can_attack, weapon_can_heal, can_heal, weapon_can_support, can_support, can_promote, can_switch_weapon)
+func show_action_menu(_unit, can_attack: bool, weapon_can_heal: bool = false, can_heal: bool = false, weapon_can_support: bool = false, can_support: bool = false, can_switch_weapon: bool = false) -> void:
+	action_menu.show_for_action(can_attack, weapon_can_heal, can_heal, weapon_can_support, can_support, can_switch_weapon)
 
 func hide_action_menu() -> void:
 	action_menu.hide()

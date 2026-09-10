@@ -1,23 +1,46 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://resources/defs/unit_data.gd" id="1"]
-[ext_resource type="Resource" path="res://data/classes/brigand.tres" id="2"]
 [ext_resource type="Resource" path="res://data/weapons/iron_axe.tres" id="3"]
 [ext_resource type="Texture2D" path="res://assets/placeholder/units/player_axe.png" id="4"]
 [ext_resource type="Texture2D" path="res://assets/placeholder/portraits/kessa.png" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/battle/units/KessaBattleSprite.tscn" id="6"]
+[ext_resource type="Texture2D" path="res://assets/units/kessa/full_body.png" id="7"]
 
 [resource]
 script = ExtResource("1")
 character_id = "kessa"
 display_name = "Kessa"
-character_class = ExtResource("2")
 level = 1
 team = 0
 permadeath = true
+class_display_name = "Brigand"
+movement_type = 0
+usable_weapon_types = Array[int]([2])
+exp = 0
+base_hp = 24
+base_str = 8
+base_mag = 0
+base_skl = 4
+base_spd = 5
+base_lck = 3
+base_def = 6
+base_res = 2
+base_con = 10
+base_mov = 5
+growth_hp = 80
+growth_str = 50
+growth_mag = 0
+growth_skl = 30
+growth_spd = 25
+growth_lck = 20
+growth_def = 30
+growth_res = 10
+growth_con = 0
 inventory = Array[WeaponData]([ExtResource("3")])
 equipped_index = 0
 portrait = ExtResource("5")
+full_body = ExtResource("7")
 battle_sprite = ExtResource("4")
 rigged_battle_sprite = ExtResource("6")
 ai_behavior = 0

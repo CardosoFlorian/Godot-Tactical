@@ -37,7 +37,7 @@ func handle_weapon_selected(index: int) -> void:
 	# Belt-and-suspenders, same convention EquipMenuState already uses: a
 	# disabled EquipMenuRow never fires row_selected for these, but check
 	# again anyway rather than trusting the UI alone.
-	if unit_data.character_class != null and not unit_data.character_class.can_use_weapon(weapon.weapon_type):
+	if not unit_data.can_use_weapon(weapon.weapon_type):
 		return
 	if not weapon.matches_action(action):
 		return

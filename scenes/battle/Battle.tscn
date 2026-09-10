@@ -7,6 +7,8 @@
 [ext_resource type="Resource" path="res://data/maps/chapter1.tres" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CombatStatsHUD.tscn" id="6"]
 [ext_resource type="PackedScene" path="res://scenes/ui/HealPreviewPanel.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/ui/LevelUpScreen.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ExpGainOverlay.tscn" id="9"]
 
 [node name="Battle" type="Node2D"]
 script = ExtResource("1")
@@ -69,6 +71,16 @@ expand_mode = 1
 stretch_mode = 6
 
 [node name="Sound" type="AudioStreamPlayer" parent="CritPortraitLayer"]
+
+[node name="ExpGainLayer" type="CanvasLayer" parent="."]
+layer = 18
+
+[node name="ExpGainOverlay" parent="ExpGainLayer" instance=ExtResource("9")]
+
+[node name="LevelUpLayer" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="LevelUpScreen" parent="LevelUpLayer" instance=ExtResource("8")]
 
 [node name="BattleStateMachine" type="Node" parent="."]
 script = ExtResource("4")

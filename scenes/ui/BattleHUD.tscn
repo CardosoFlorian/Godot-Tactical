@@ -23,7 +23,7 @@ text = "Phase Joueur"
 
 [node name="ActionMenu" parent="." instance=ExtResource("3")]
 offset_top = 256.0
-offset_bottom = 536.0
+offset_bottom = 496.0
 
 [node name="EquipMenu" parent="." instance=ExtResource("4")]
 

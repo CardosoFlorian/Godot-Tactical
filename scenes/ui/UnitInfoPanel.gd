@@ -42,6 +42,8 @@ const MOVEMENT_ICONS: Array[Texture2D] = [
 ]
 @onready var hp_bar: ProgressBar = $VBox/HPBar
 @onready var hp_label: Label = $VBox/HPBar/HPLabel
+@onready var exp_bar: ProgressBar = $VBox/ExpBar
+@onready var exp_label: Label = $VBox/ExpBar/ExpLabel
 @onready var stat_str: Label = $VBox/StatGrid/StatStr
 @onready var stat_mag: Label = $VBox/StatGrid/StatMag
 @onready var stat_skl: Label = $VBox/StatGrid/StatSkl
@@ -59,13 +61,20 @@ func _ready() -> void:
 
 func show_unit(unit_data: UnitData) -> void:
 	name_label.text = unit_data.display_name
-	var class_name_text := unit_data.character_class.display_name if unit_data.character_class else "?"
-	class_label.text = "%s Niv.%d" % [class_name_text, unit_data.level]
-	_show_proficiencies(unit_data.character_class)
-	_show_movement_type(unit_data.character_class)
+	class_label.text = "%s Niv.%d" % [unit_data.get_class_display_name(), unit_data.level]
+	_show_proficiencies(unit_data)
+	_show_movement_type(unit_data)
 	hp_bar.max_value = unit_data.get_max_hp()
 	hp_bar.value = unit_data.get_current_hp()
 	hp_label.text = "%d / %d" % [unit_data.get_current_hp(), unit_data.get_max_hp()]
+
+	# EXP only means anything for a character_class == null unit (a
+	# playable/boss-style unit with its own level — see UnitData.gain_exp);
+	# a regular ClassData-templated enemy never levels up mid-battle, so
+	# hide the bar entirely for those rather than showing a meaningless 0/100.
+	exp_bar.visible = unit_data.character_class == null
+	if exp_bar.visible:
+		_set_exp_display(unit_data.exp)
 
 	_set_stat(stat_str, "Force", unit_data.get_str(), unit_data, WeaponData.DebuffStat.STR)
 	_set_stat(stat_mag, "Magie", unit_data.get_mag(), unit_data, WeaponData.DebuffStat.MAG)
@@ -95,25 +104,29 @@ func _set_stat(label: Label, prefix: String, value: int, unit_data: UnitData, st
 	var is_debuffed := unit_data.get_debuff_total(stat) > 0
 	label.add_theme_color_override("font_color", DEBUFF_STAT_COLOR if is_debuffed else NORMAL_STAT_COLOR)
 
-## Lights up one icon per weapon type character_class.usable_weapon_types
-## allows, dims the rest rather than hiding them (so the full 5-icon set is
-## always there as a reference for what exists, not just what this unit has).
-func _show_proficiencies(character_class: ClassData) -> void:
+## Lights up one icon per weapon type unit_data.can_use_weapon allows, dims
+## the rest rather than hiding them (so the full icon set is always there as
+## a reference for what exists, not just what this unit has).
+func _show_proficiencies(unit_data: UnitData) -> void:
 	for type in PROFICIENCY_ICONS.size():
 		var icon := proficiency_icons[type]
 		icon.texture = PROFICIENCY_ICONS[type]
-		var usable := character_class != null and character_class.can_use_weapon(type)
-		icon.modulate = Color.WHITE if usable else Color(1, 1, 1, 0.25)
+		icon.modulate = Color.WHITE if unit_data.can_use_weapon(type) else Color(1, 1, 1, 0.25)
 
-## Shows only the icon matching this class's actual movement type (no dimmed
-## siblings, unlike _show_proficiencies above) — hidden entirely if there's
-## no class to read a movement type from.
-func _show_movement_type(character_class: ClassData) -> void:
-	if character_class == null:
-		movement_icon.visible = false
-		return
-	movement_icon.texture = MOVEMENT_ICONS[character_class.movement_type]
+## Shows only the icon matching this unit's actual movement type (no dimmed
+## siblings, unlike _show_proficiencies above).
+func _show_movement_type(unit_data: UnitData) -> void:
+	movement_icon.texture = MOVEMENT_ICONS[unit_data.get_movement_type()]
 	movement_icon.visible = true
 
 func hide_panel() -> void:
 	hide()
+
+## Static only — no animation here anymore (see ExpGainOverlay, the
+## centered on-screen bar that plays the actual fill animation; this
+## corner panel just snaps straight to whatever the real value is,
+## refreshed via the SignalBus.unit_selected re-emit Battle.gd does once
+## an XP grant finishes).
+func _set_exp_display(value: int) -> void:
+	exp_bar.value = value
+	exp_label.text = "XP %d / 100" % value

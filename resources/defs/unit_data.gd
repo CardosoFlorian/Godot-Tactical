@@ -15,12 +15,66 @@ enum AIBehavior { NONE, AGGRESSIVE, DEFENSIVE }
 ## instead of a number invented on the spot later.
 const MAX_INVENTORY_SIZE := 5
 
+## No more class promotion resetting a character's level — see
+## can_use_weapon/gain_exp below — so this covers a unit's whole arc.
+const MAX_LEVEL := 30
+
+## First-pass XP numbers, same "tune after seeing it in real play" spirit as
+## every other combat formula in this project (weapon might/hit, debuff
+## amounts...) — see gain_exp.
+const EXP_TO_LEVEL := 100
+const EXP_BASE := 20
+const EXP_LEVEL_DIFF_MULT := 2
+const EXP_MIN := 1
+const EXP_MAX := 40
+const EXP_KILL_BONUS := 20
+
 @export var character_id: String = ""
 @export var display_name: String = "Unit"
+## Shared-template stats for a class of interchangeable units (regular
+## enemies — Bandit, Soldat...). null means this unit carries its OWN stats
+## instead (every playable character, and any future boss) — see the
+## "Individual stats" group below and can_use_weapon/get_class_display_name,
+## which both branch on this exact same null check.
 @export var character_class: ClassData
 @export var level: int = 1
 @export var team: Team = Team.PLAYER
 @export var permadeath: bool = true
+
+@export_group("Individual stats (used when character_class is null)")
+## Shown in the UI in place of character_class.display_name — see
+## get_class_display_name. Purely cosmetic (e.g. "Mage"), no longer a real
+## resource driving weapons/stats for these units.
+@export var class_display_name: String = ""
+@export var movement_type: ClassData.MovementType = ClassData.MovementType.INFANTRY
+@export var usable_weapon_types: Array[WeaponData.WeaponType] = []
+@export var exp: int = 0
+@export var base_hp: int = 20
+@export var base_str: int = 5
+@export var base_mag: int = 0
+@export var base_skl: int = 5
+@export var base_spd: int = 5
+@export var base_lck: int = 5
+@export var base_def: int = 5
+@export var base_res: int = 5
+@export var base_con: int = 8
+@export var base_mov: int = 5
+## Still a %, but rolled RANDOMLY per level-up now (see gain_exp) — real
+## Fire Emblem style, unlike ClassData's deterministic _growth_bonus formula
+## (which enemies keep unchanged; they never show a level-up reveal).
+@export var growth_hp: int = 70
+@export var growth_str: int = 40
+@export var growth_mag: int = 0
+@export var growth_skl: int = 40
+@export var growth_spd: int = 40
+@export var growth_lck: int = 30
+@export var growth_def: int = 30
+@export var growth_res: int = 20
+@export var growth_con: int = 0
+## Engine-only for now — every playable character ships this empty. Which
+## technique, for which character, at which level is real per-character
+## creative design, not invented here. See TechniqueData and gain_exp.
+@export var techniques: Array[TechniqueData] = []
 
 @export_group("Equipment")
 @export var inventory: Array[WeaponData] = []
@@ -48,6 +102,9 @@ var last_combat_equipped_index: int = 0
 
 @export_group("Portraits & sprites")
 @export var portrait: Texture2D
+## Shown on the level-up screen (see LevelUpScreen) — null for a unit that
+## never levels up on-screen (regular enemies).
+@export var full_body: Texture2D
 @export var battle_sprite: Texture2D
 ## Optional cutout-rig battle sprite (idle/attack animations). When set,
 ## Unit.gd instances this instead of drawing battle_sprite as a static
@@ -130,16 +187,31 @@ func tick_freeze() -> void:
 func is_frozen() -> bool:
 	return frozen_turns_remaining > 0
 
+## Whether this unit is allowed to equip `weapon_type` — delegates to the
+## shared class for a template unit, or this unit's OWN list otherwise. The
+## single chokepoint every weapon-usability check in the project should call
+## (Battle.gd, EquipMenu, UnitInfoPanel, WeaponPickerState...) instead of
+## reaching into character_class directly, now that there are two different
+## sources of truth depending on the unit.
+func can_use_weapon(weapon_type: WeaponData.WeaponType) -> bool:
+	return character_class.can_use_weapon(weapon_type) if character_class else usable_weapon_types.has(weapon_type)
+
+## "Mage", "Brigand"... — character_class's own display_name for a template
+## unit, or this unit's cosmetic class_display_name otherwise (no longer a
+## real resource for these, see the "Individual stats" export group).
+func get_class_display_name() -> String:
+	return character_class.display_name if character_class else class_display_name
+
 ## Returns null (treated as unarmed) if the inventory is empty OR the
-## equipped weapon isn't one this class is allowed to use — classes are
+## equipped weapon isn't one this unit is allowed to use — classes are
 ## locked old-school-Fire-Emblem style, so this is real enforcement, not
 ## just a data hint.
 func get_equipped_weapon() -> WeaponData:
-	if inventory.is_empty() or character_class == null:
+	if inventory.is_empty():
 		return null
 	var weapon := inventory[clampi(equipped_index, 0, inventory.size() - 1)]
-	if weapon and not character_class.can_use_weapon(weapon.weapon_type):
-		push_warning("%s's class (%s) can't use %s — treating as unarmed." % [display_name, character_class.display_name, weapon.display_name])
+	if weapon and not can_use_weapon(weapon.weapon_type):
+		push_warning("%s's class (%s) can't use %s — treating as unarmed." % [display_name, get_class_display_name(), weapon.display_name])
 		return null
 	return weapon
 
@@ -158,12 +230,16 @@ func get_combat_weapon() -> WeaponData:
 		return null
 	return inventory[last_combat_equipped_index]
 
+## Deterministic growth curve — ONLY for a character_class != null unit
+## (regular enemies). A character_class == null unit's stats are rolled
+## randomly per level-up instead (see gain_exp) and read straight off its
+## own base_X fields, no formula involved.
 func _growth_bonus(growth_percent: int) -> int:
 	return int(float(growth_percent) / 100.0 * float(level - 1))
 
 func get_max_hp() -> int:
 	if character_class == null:
-		return 1
+		return base_hp
 	return character_class.base_hp + _growth_bonus(character_class.growth_hp)
 
 func get_current_hp() -> int:
@@ -178,52 +254,143 @@ func is_alive() -> bool:
 	return get_current_hp() > 0
 
 func get_str() -> int:
-	var base := character_class.base_str + _growth_bonus(character_class.growth_str) if character_class else 0
+	var base := character_class.base_str + _growth_bonus(character_class.growth_str) if character_class else base_str
 	return maxi(0, base - get_debuff_total(WeaponData.DebuffStat.STR))
 
 func get_mag() -> int:
-	var base := character_class.base_mag + _growth_bonus(character_class.growth_mag) if character_class else 0
+	var base := character_class.base_mag + _growth_bonus(character_class.growth_mag) if character_class else base_mag
 	return maxi(0, base - get_debuff_total(WeaponData.DebuffStat.MAG))
 
 func get_skl() -> int:
-	var base := character_class.base_skl + _growth_bonus(character_class.growth_skl) if character_class else 0
+	var base := character_class.base_skl + _growth_bonus(character_class.growth_skl) if character_class else base_skl
 	return maxi(0, base - get_debuff_total(WeaponData.DebuffStat.SKL))
 
 func get_spd() -> int:
-	var base := character_class.base_spd + _growth_bonus(character_class.growth_spd) if character_class else 0
+	var base := character_class.base_spd + _growth_bonus(character_class.growth_spd) if character_class else base_spd
 	return maxi(0, base - get_debuff_total(WeaponData.DebuffStat.SPD))
 
 func get_lck() -> int:
-	var base := character_class.base_lck + _growth_bonus(character_class.growth_lck) if character_class else 0
+	var base := character_class.base_lck + _growth_bonus(character_class.growth_lck) if character_class else base_lck
 	return maxi(0, base - get_debuff_total(WeaponData.DebuffStat.LCK))
 
 func get_def() -> int:
-	var base := character_class.base_def + _growth_bonus(character_class.growth_def) if character_class else 0
+	var base := character_class.base_def + _growth_bonus(character_class.growth_def) if character_class else base_def
 	return maxi(0, base - get_debuff_total(WeaponData.DebuffStat.DEF))
 
 func get_res() -> int:
-	var base := character_class.base_res + _growth_bonus(character_class.growth_res) if character_class else 0
+	var base := character_class.base_res + _growth_bonus(character_class.growth_res) if character_class else base_res
 	return maxi(0, base - get_debuff_total(WeaponData.DebuffStat.RES))
 
 func get_con() -> int:
-	return character_class.base_con + _growth_bonus(character_class.growth_con) if character_class else 0
+	return character_class.base_con + _growth_bonus(character_class.growth_con) if character_class else base_con
 
 func get_mov() -> int:
-	return character_class.base_mov if character_class else 1
+	return character_class.base_mov if character_class else base_mov
 
 func get_movement_type() -> ClassData.MovementType:
-	return character_class.movement_type if character_class else ClassData.MovementType.INFANTRY
+	return character_class.movement_type if character_class else movement_type
 
-## Old-school Fire Emblem promotion: fixed target class, no player choice.
-## For now gated on level only (see ClassData.promotion_level) — a
-## promotion item requirement is planned but there's no inventory/item
-## system yet to hang it on.
-func can_promote() -> bool:
-	return character_class != null and character_class.promoted_class != null and level >= character_class.promotion_level
+## Adds `amount` XP, resolving any level-ups that cross EXP_TO_LEVEL. No-op
+## (empty return) for a character_class != null unit — regular enemies keep
+## their deterministic growth and never level up mid-battle — or once
+## MAX_LEVEL is already reached. Returns one result dict per level actually
+## gained: {"level": int, "stat_gains": Dictionary[String, int] (only stats
+## that rolled up are present, value always 1), "technique": TechniqueData
+## or null} — a big XP grant crossing 2 thresholds yields 2 entries, so
+## Battle.gd can show the level-up screen once per level in sequence, same
+## as a real multi-level-up plays out one reveal at a time rather than
+## folding straight to the end result.
+func gain_exp(amount: int) -> Array[Dictionary]:
+	var results: Array[Dictionary] = []
+	if character_class != null:
+		return results
+	exp += amount
+	while exp >= EXP_TO_LEVEL and level < MAX_LEVEL:
+		exp -= EXP_TO_LEVEL
+		level += 1
+		var stat_gains := _roll_level_up_stats()
+		var technique := _grant_technique_if_due()
+		results.append({"level": level, "stat_gains": stat_gains, "technique": technique})
+	if level >= MAX_LEVEL:
+		exp = 0
+	return results
 
-func promote() -> void:
-	if not can_promote():
-		return
-	character_class = character_class.promoted_class
-	level = 1
-	current_hp = get_max_hp()
+## Real Fire Emblem style: each growth_X is a genuine per-stat coin-flip
+## rolled fresh this level (unlike _growth_bonus's deterministic curve,
+## which stays untouched for character_class != null units) — the whole
+## reason a level-up screen exists is to reveal this roll. A HP gain also
+## heals current_hp by the same amount (real FE behavior: leveling up isn't
+## just a bigger max, it restores the difference too), guarded on
+## current_hp already being initialized so this can't create a negative
+## "phantom heal" before the unit's first get_current_hp() call.
+func _roll_level_up_stats() -> Dictionary:
+	var gains := {}
+	if randf() * 100.0 < growth_hp:
+		base_hp += 1
+		if current_hp >= 0:
+			current_hp += 1
+		gains["hp"] = 1
+	if randf() * 100.0 < growth_str:
+		base_str += 1
+		gains["str"] = 1
+	if randf() * 100.0 < growth_mag:
+		base_mag += 1
+		gains["mag"] = 1
+	if randf() * 100.0 < growth_skl:
+		base_skl += 1
+		gains["skl"] = 1
+	if randf() * 100.0 < growth_spd:
+		base_spd += 1
+		gains["spd"] = 1
+	if randf() * 100.0 < growth_lck:
+		base_lck += 1
+		gains["lck"] = 1
+	if randf() * 100.0 < growth_def:
+		base_def += 1
+		gains["def"] = 1
+	if randf() * 100.0 < growth_res:
+		base_res += 1
+		gains["res"] = 1
+	if randf() * 100.0 < growth_con:
+		base_con += 1
+		gains["con"] = 1
+	return gains
+
+## Applies whichever technique (if any) in `techniques` requires exactly
+## this unit's new `level` — see TechniqueData. At most one per level;
+## multiple techniques sharing a level_required would only ever grant the
+## first found, not expected to come up given the ~5-level cadence but not
+## enforced here either.
+func _grant_technique_if_due() -> TechniqueData:
+	for technique in techniques:
+		if technique.level_required != level:
+			continue
+		match technique.type:
+			TechniqueData.TechniqueType.STAT_BUFF:
+				_apply_stat_buff(technique.stat, technique.stat_amount)
+			TechniqueData.TechniqueType.WEAPON_UNLOCK:
+				if not usable_weapon_types.has(technique.weapon_type):
+					usable_weapon_types.append(technique.weapon_type)
+			TechniqueData.TechniqueType.MOVEMENT_CHANGE:
+				movement_type = technique.new_movement_type
+			TechniqueData.TechniqueType.PASSIVE:
+				pass  # data placeholder only — see TechniqueData
+		return technique
+	return null
+
+func _apply_stat_buff(stat: WeaponData.DebuffStat, amount: int) -> void:
+	match stat:
+		WeaponData.DebuffStat.STR:
+			base_str += amount
+		WeaponData.DebuffStat.MAG:
+			base_mag += amount
+		WeaponData.DebuffStat.SKL:
+			base_skl += amount
+		WeaponData.DebuffStat.SPD:
+			base_spd += amount
+		WeaponData.DebuffStat.LCK:
+			base_lck += amount
+		WeaponData.DebuffStat.DEF:
+			base_def += amount
+		WeaponData.DebuffStat.RES:
+			base_res += amount

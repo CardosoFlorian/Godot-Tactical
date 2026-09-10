@@ -1,6 +1,6 @@
 class_name ActionMenuState
 extends BattleState
-## Shows the Attack/Heal/Wait/Promote menu for a unit that has finished (or
+## Shows the Attack/Heal/Wait menu for a unit that has finished (or
 ## skipped) moving. Cancelling here undoes the move (Battle.undo_move) and
 ## goes back to "move" so the player can pick a different tile — any action
 ## is undoable up until Wait or a resolved Attack/Heal actually commits it
@@ -20,9 +20,8 @@ func enter(_previous_state_name: String = "") -> void:
 	# Heal above.
 	var weapon_can_support := battle.weapon_can_support(unit)
 	var can_support := weapon_can_support and battle.has_support_target(unit)
-	var can_promote := unit.unit_data.can_promote()
 	SignalBus.action_menu_opened.emit(unit)
-	battle.ui.show_action_menu(unit, can_attack, weapon_can_heal, can_heal, weapon_can_support, can_support, can_promote, battle.can_switch_weapon(unit))
+	battle.ui.show_action_menu(unit, can_attack, weapon_can_heal, can_heal, weapon_can_support, can_support, battle.can_switch_weapon(unit))
 
 func exit() -> void:
 	battle.ui.hide_action_menu()
@@ -39,12 +38,6 @@ func handle_action_chosen(action_name: String) -> void:
 		"wait":
 			unit.has_acted = true
 			state_machine.change_state("unit_select")
-		"promote":
-			# Old-school Fire Emblem: promoting doesn't cost the turn, so the
-			# unit can still Attack/Heal/Wait normally afterward.
-			unit.unit_data.promote()
-			SignalBus.unit_selected.emit(unit)
-			enter()
 		"equip":
 			if not battle.can_switch_weapon(unit):
 				return
