@@ -8,6 +8,13 @@ extends Resource
 enum Team { PLAYER, ENEMY, ALLY }
 enum AIBehavior { NONE, AGGRESSIVE, DEFENSIVE }
 
+## Classic GBA Fire Emblem inventory cap. Not enforced anywhere yet — there's
+## no code path that adds a weapon to `inventory` at runtime (no loot/shop
+## system), so nothing can currently exceed it. Documented here now so
+## whatever eventually adds items has a real constant to check against
+## instead of a number invented on the spot later.
+const MAX_INVENTORY_SIZE := 5
+
 @export var character_id: String = ""
 @export var display_name: String = "Unit"
 @export var character_class: ClassData

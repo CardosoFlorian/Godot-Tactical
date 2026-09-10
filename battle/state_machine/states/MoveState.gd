@@ -16,7 +16,7 @@ func enter(_previous_state_name: String = "") -> void:
 	battle.show_unit_range(unit, battle.move_range)
 	SignalBus.move_range_shown.emit(battle.move_range)
 	var weapon_can_heal := battle.weapon_can_heal(unit)
-	battle.ui.show_move_menu(battle.has_attackable_target(unit), weapon_can_heal, weapon_can_heal and battle.has_healable_target(unit))
+	battle.ui.show_move_menu(battle.has_attackable_target(unit), weapon_can_heal, weapon_can_heal and battle.has_healable_target(unit), battle.can_switch_weapon(unit))
 
 func exit() -> void:
 	battle.ui.hide_action_menu()
@@ -30,6 +30,9 @@ func exit() -> void:
 ## onto its own tile (same mechanism handle_unit_clicked below uses when
 ## you click your own unit) so has_moved flips true, then jumps straight to
 ## targeting instead of bouncing through "action_menu" just to click again.
+## Equip is a third case, but doesn't fit either pattern: it's free (doesn't
+## end the turn like Wait, doesn't need has_moved like Attack/Heal), so it
+## neither ends the turn nor calls _move_to — see its own case below.
 func handle_action_chosen(action_name: String) -> void:
 	var unit := battle.selected_unit
 	match action_name:
@@ -46,6 +49,15 @@ func handle_action_chosen(action_name: String) -> void:
 				return
 			await _move_to(unit.grid_pos)
 			state_machine.change_state("heal_targeting")
+		"equip":
+			# Free action, unlike attack/heal above — no _move_to needed since
+			# nothing is being committed (has_moved stays false), so the unit
+			# can still move normally afterward. Returns to "move" (see
+			# EquipMenuState), which re-enters and recomputes attack-range
+			# highlighting for whatever weapon ends up equipped.
+			if not battle.can_switch_weapon(unit):
+				return
+			state_machine.change_state("equip_menu")
 
 func handle_tile_clicked(pos: Vector2i) -> void:
 	if not battle.move_range.has(pos):
@@ -76,6 +88,10 @@ func handle_unit_clicked(unit: Unit) -> void:
 		state_machine.change_state("unit_select")
 
 func handle_cancel() -> void:
+	# Nothing's moved yet at this point, so no undo_move — but a pre-move
+	# equip swap (see the "equip" case above) still needs reverting on a
+	# full cancel, same invariant undo_move upholds for position.
+	battle.revert_equipped_weapon(battle.selected_unit)
 	state_machine.change_state("unit_select")
 
 ## Walks the selected unit onto `pos` (must be in battle.move_range) and

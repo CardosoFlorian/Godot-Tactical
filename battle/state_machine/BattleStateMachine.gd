@@ -19,6 +19,7 @@ func setup(p_battle: Battle) -> void:
 		"action_menu": ActionMenuState.new(battle, self),
 		"targeting": TargetingState.new(battle, self),
 		"heal_targeting": HealState.new(battle, self),
+		"equip_menu": EquipMenuState.new(battle, self),
 		"enemy_phase": EnemyPhaseState.new(battle, self),
 		"game_over": BattleState.new(battle, self),
 	}
@@ -48,6 +49,10 @@ func handle_tile_clicked(pos: Vector2i) -> void:
 func handle_action_chosen(action_name: String) -> void:
 	if current_state:
 		current_state.handle_action_chosen(action_name)
+
+func handle_weapon_selected(index: int) -> void:
+	if current_state:
+		current_state.handle_weapon_selected(index)
 
 func handle_cancel() -> void:
 	if current_state:

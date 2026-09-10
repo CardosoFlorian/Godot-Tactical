@@ -17,7 +17,7 @@ func enter(_previous_state_name: String = "") -> void:
 	var can_heal := weapon_can_heal and battle.has_healable_target(unit)
 	var can_promote := unit.unit_data.can_promote()
 	SignalBus.action_menu_opened.emit(unit)
-	battle.ui.show_action_menu(unit, can_attack, weapon_can_heal, can_heal, can_promote)
+	battle.ui.show_action_menu(unit, can_attack, weapon_can_heal, can_heal, can_promote, battle.can_switch_weapon(unit))
 
 func exit() -> void:
 	battle.ui.hide_action_menu()
@@ -38,6 +38,10 @@ func handle_action_chosen(action_name: String) -> void:
 			unit.unit_data.promote()
 			SignalBus.unit_selected.emit(unit)
 			enter()
+		"equip":
+			if not battle.can_switch_weapon(unit):
+				return
+			state_machine.change_state("equip_menu")
 
 func handle_cancel() -> void:
 	battle.undo_move(battle.selected_unit)

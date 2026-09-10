@@ -110,6 +110,13 @@ var selected_unit: Unit
 ## stays selected, so cancelling out of ActionMenuState can always restore
 ## it via undo_move regardless of how many times "move" is re-entered.
 var selected_unit_start_pos: Vector2i
+## Same idea as selected_unit_start_pos, for the equipped weapon: equipping
+## is a free action (see EquipMenuState) with no separate "commit" step of
+## its own, so without this, cancelling the whole turn attempt via
+## ActionMenuState.handle_cancel would leave a weapon swap stuck even though
+## everything else about the attempt got undone. Restored in undo_move
+## alongside position.
+var selected_unit_start_equipped_index: int = 0
 var move_range: Dictionary = {}
 var current_phase: int = UnitData.Team.PLAYER
 var rng := RandomNumberGenerator.new()
@@ -123,6 +130,8 @@ func _ready() -> void:
 	rng.randomize()
 	ui.attack_pressed.connect(func(): state_machine.handle_action_chosen("attack"))
 	ui.heal_pressed.connect(func(): state_machine.handle_action_chosen("heal"))
+	ui.equip_pressed.connect(func(): state_machine.handle_action_chosen("equip"))
+	ui.weapon_selected.connect(func(i: int): state_machine.handle_weapon_selected(i))
 	ui.wait_pressed.connect(func(): state_machine.handle_action_chosen("wait"))
 	ui.promote_pressed.connect(func(): state_machine.handle_action_chosen("promote"))
 	ui.cancel_pressed.connect(func(): state_machine.handle_cancel())
@@ -383,6 +392,14 @@ func weapon_can_heal(unit: Unit) -> bool:
 	var weapon := unit.unit_data.get_equipped_weapon()
 	return weapon != null and weapon.can_heal()
 
+## Whether the unit has anything at all to show in the Equip menu — hidden
+## only for the edge case of a completely empty inventory. Shown even with
+## just one weapon (user's explicit call: still useful to check its stats,
+## and a button that's always there beats one that appears/disappears
+## depending on inventory size).
+func can_switch_weapon(unit: Unit) -> bool:
+	return unit.unit_data.inventory.size() > 0
+
 ## Allies (self included — targeting yourself is a valid choice) within the
 ## healer's equipped weapon's range who aren't already at full HP. Empty if
 ## the weapon can't heal at all.
@@ -442,6 +459,19 @@ func undo_move(unit: Unit) -> void:
 	unit.position = grid.grid_to_world(selected_unit_start_pos)
 	unit.has_moved = false
 	grid.set_occupant(selected_unit_start_pos, unit)
+	revert_equipped_weapon(unit)
+
+## Restores unit_data.equipped_index to whatever it was at selection time —
+## equipping is a free action with no commit step of its own (see
+## EquipMenuState), so cancelling the whole turn attempt needs to undo it
+## explicitly, same as position. Called from undo_move (ActionMenuState's
+## cancel path) AND directly from MoveState.handle_cancel (which has no
+## position to undo — nothing's moved yet at that point — but a pre-move
+## equip swap still needs reverting on a full cancel).
+func revert_equipped_weapon(unit: Unit) -> void:
+	if unit.unit_data.equipped_index != selected_unit_start_equipped_index:
+		unit.unit_data.equipped_index = selected_unit_start_equipped_index
+		SignalBus.unit_selected.emit(unit)
 
 ## Resolves a full attack (distance, terrain bonuses, RNG, HP application,
 ## death handling) between two units already in position. Shared by manual

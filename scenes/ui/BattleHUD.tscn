@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scenes/ui/BattleHUD.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/UnitInfoPanel.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/ActionMenu.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/ui/EquipMenu.tscn" id="4"]
 
 [node name="BattleHUD" type="CanvasLayer"]
 script = ExtResource("1")
@@ -22,7 +23,9 @@ text = "Phase Joueur"
 
 [node name="ActionMenu" parent="." instance=ExtResource("3")]
 offset_top = 256.0
-offset_bottom = 416.0
+offset_bottom = 496.0
+
+[node name="EquipMenu" parent="." instance=ExtResource("4")]
 
 [node name="EndTurnButton" type="Button" parent="."]
 anchors_preset = 3

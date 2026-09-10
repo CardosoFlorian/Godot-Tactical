@@ -26,5 +26,8 @@ func handle_tile_clicked(_pos: Vector2i) -> void:
 func handle_action_chosen(_action_name: String) -> void:
 	pass
 
+func handle_weapon_selected(_index: int) -> void:
+	pass
+
 func handle_cancel() -> void:
 	pass

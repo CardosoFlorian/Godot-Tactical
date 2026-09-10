@@ -6,12 +6,14 @@ extends PanelContainer
 
 signal attack_pressed
 signal heal_pressed
+signal equip_pressed
 signal wait_pressed
 signal promote_pressed
 signal cancel_pressed
 
 @onready var attack_button: Button = $VBox/AttackButton
 @onready var heal_button: Button = $VBox/HealButton
+@onready var equip_button: Button = $VBox/EquipButton
 @onready var wait_button: Button = $VBox/WaitButton
 @onready var promote_button: Button = $VBox/PromoteButton
 @onready var cancel_button: Button = $VBox/CancelButton
@@ -19,6 +21,7 @@ signal cancel_pressed
 func _ready() -> void:
 	attack_button.pressed.connect(func(): attack_pressed.emit())
 	heal_button.pressed.connect(func(): heal_pressed.emit())
+	equip_button.pressed.connect(func(): equip_pressed.emit())
 	wait_button.pressed.connect(func(): wait_pressed.emit())
 	promote_button.pressed.connect(func(): promote_pressed.emit())
 	cancel_button.pressed.connect(func(): cancel_pressed.emit())
@@ -31,10 +34,11 @@ func _ready() -> void:
 ## doesn't need a move at all (see MoveState.handle_action_chosen, which is
 ## what actually acts on these buttons when enabled here). Promote still
 ## needs a real move/confirm first.
-func show_for_move(can_attack: bool = false, weapon_can_heal: bool = false, can_heal: bool = false) -> void:
+func show_for_move(can_attack: bool = false, weapon_can_heal: bool = false, can_heal: bool = false, can_switch_weapon: bool = false) -> void:
 	attack_button.disabled = not can_attack
 	heal_button.visible = weapon_can_heal
 	heal_button.disabled = not can_heal
+	equip_button.visible = can_switch_weapon
 	wait_button.disabled = false
 	promote_button.visible = false
 	cancel_button.visible = true
@@ -45,10 +49,14 @@ func show_for_move(can_attack: bool = false, weapon_can_heal: bool = false, can_
 ## `weapon_can_heal` controls whether the Heal button shows up at all (most
 ## units never carry a healing weapon); `can_heal` controls whether it's
 ## clickable once shown (same "visible vs. enabled" split as `can_attack`).
-func show_for_action(can_attack: bool, weapon_can_heal: bool, can_heal: bool, can_promote: bool) -> void:
+## `can_switch_weapon` (a unit with more than one weapon in inventory) works
+## the same way as `weapon_can_heal` — visible-only, no disabled state, since
+## switching is always either possible or pointless, nothing in between.
+func show_for_action(can_attack: bool, weapon_can_heal: bool, can_heal: bool, can_promote: bool, can_switch_weapon: bool = false) -> void:
 	attack_button.disabled = not can_attack
 	heal_button.visible = weapon_can_heal
 	heal_button.disabled = not can_heal
+	equip_button.visible = can_switch_weapon
 	wait_button.disabled = false
 	promote_button.visible = can_promote
 	cancel_button.visible = true
