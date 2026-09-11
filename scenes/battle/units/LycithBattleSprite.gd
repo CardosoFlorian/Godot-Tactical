@@ -31,6 +31,14 @@ signal attack_contact
 
 var _contact_emitted_this_attack := false
 
+## Built once per script (not per instance) and shared across every Lycith
+## on screen — see AuroraBattleSprite's identical cache for why: rebuilding
+## these from ~29 individual load() calls on EVERY instantiate() cost
+## ~260ms per spawn, the real source of the "gros lag" on entering the prep
+## camp AND again on pressing Combattre !.
+static var _idle_frames_cache: SpriteFrames
+static var _attack_frames_cache: SpriteFrames
+
 func _ready() -> void:
 	_build_idle_frames()
 	_build_attack_frames()
@@ -74,21 +82,23 @@ func faces_right_by_default() -> bool:
 	return true
 
 func _build_idle_frames() -> void:
-	var frames := SpriteFrames.new()
-	frames.add_animation("idle")
-	frames.set_animation_speed("idle", IDLE_FPS)
-	frames.set_animation_loop("idle", true)
-	for i in range(1, IDLE_FRAME_COUNT + 1):
-		var path := "%sidle_%02d.png" % [IDLE_FRAME_DIR, i]
-		frames.add_frame("idle", load(path))
-	_idle_sprite.sprite_frames = frames
+	if _idle_frames_cache == null:
+		_idle_frames_cache = SpriteFrames.new()
+		_idle_frames_cache.add_animation("idle")
+		_idle_frames_cache.set_animation_speed("idle", IDLE_FPS)
+		_idle_frames_cache.set_animation_loop("idle", true)
+		for i in range(1, IDLE_FRAME_COUNT + 1):
+			var path := "%sidle_%02d.png" % [IDLE_FRAME_DIR, i]
+			_idle_frames_cache.add_frame("idle", load(path))
+	_idle_sprite.sprite_frames = _idle_frames_cache
 
 func _build_attack_frames() -> void:
-	var frames := SpriteFrames.new()
-	frames.add_animation("attack")
-	frames.set_animation_speed("attack", ATTACK_FPS)
-	frames.set_animation_loop("attack", false)
-	for i in range(1, ATTACK_FRAME_COUNT + 1):
-		var path := "%sattack_%02d.png" % [ATTACK_FRAME_DIR, i]
-		frames.add_frame("attack", load(path))
-	_attack_sprite.sprite_frames = frames
+	if _attack_frames_cache == null:
+		_attack_frames_cache = SpriteFrames.new()
+		_attack_frames_cache.add_animation("attack")
+		_attack_frames_cache.set_animation_speed("attack", ATTACK_FPS)
+		_attack_frames_cache.set_animation_loop("attack", false)
+		for i in range(1, ATTACK_FRAME_COUNT + 1):
+			var path := "%sattack_%02d.png" % [ATTACK_FRAME_DIR, i]
+			_attack_frames_cache.add_frame("attack", load(path))
+	_attack_sprite.sprite_frames = _attack_frames_cache

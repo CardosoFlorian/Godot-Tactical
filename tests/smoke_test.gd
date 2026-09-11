@@ -24,6 +24,7 @@ func _run() -> void:
 	ok = _test_battle_build() and ok
 	ok = await _test_full_turn_flow() and ok
 	ok = _test_combat_resolution() and ok
+	ok = _test_prep_phase_build() and ok
 	print("=== %s ===" % ("PASS" if ok else "FAIL"))
 	quit(0 if ok else 1)
 
@@ -131,4 +132,107 @@ func _test_combat_resolution() -> bool:
 		ok = false
 
 	battle.queue_free()
+	return ok
+
+## PrepPhase (scenes/prep/PrepPhase.gd) is a camp-menu scene with several
+## @onready node-path refs across PrepPhase/UnitsScreen/ConvoyScreen/
+## RosterCard — per the standing headless-verification convention,
+## --editor --quit alone won't catch a wrong $Path here (only real scene
+## instantiation does). Seeds GameState.player_roster directly (rather than
+## going through CampaignFlow.start_campaign, which also kicks off dialogue/
+## battle steps this test has no interest in) with 2 duplicated units, then
+## drives PrepPhase's auto-placement, its Unités/Inventaire subscreens, the
+## squad-toggle round trip, and the final Combattre! confirm — all by
+## calling the same internal handlers the UI buttons call.
+##
+## Looked up via root.get_node("GameState") rather than the bare GameState
+## identifier — same reason locals aren't statically typed as Battle/UnitData
+## elsewhere in this file (see the header comment): this entry script
+## compiles before autoloads are registered as resolvable global
+## identifiers, so a direct GameState reference fails to even compile, let
+## alone run — Battle.gd itself can reference GameState by name fine since
+## it's a different script, compiled later (once load() actually runs it).
+func _test_prep_phase_build() -> bool:
+	var ok := true
+	var game_state = root.get_node("GameState")
+	game_state.player_roster.clear()
+	var aurora = load("res://data/units/aurora.tres").duplicate()
+	var lycith = load("res://data/units/lycith.tres").duplicate()
+	game_state.add_unit(aurora)
+	game_state.add_unit(lycith)
+
+	var prep_scene: PackedScene = load("res://scenes/prep/PrepPhase.tscn")
+	var prep = prep_scene.instantiate()
+	prep.map_data = load("res://data/maps/chapter1.tres")
+	root.add_child(prep)
+
+	# Both living units auto-join the squad (cap is 4) and get auto-placed
+	# on the map immediately, matching the reference: units already
+	# standing in camp, free to be picked up and moved.
+	if prep._squad.size() != 2:
+		printerr("FAIL: expected both units auto-added to the squad, got ", prep._squad.size())
+		ok = false
+	if prep._unit_nodes.size() != 2:
+		printerr("FAIL: expected both units auto-placed, got ", prep._unit_nodes.size())
+		ok = false
+
+	# "Unités" opens the roster+detail screen with one card per living unit.
+	prep._on_units_pressed()
+	if not prep.units_screen.visible:
+		printerr("FAIL: expected UnitsScreen to be visible after pressing Unités")
+		ok = false
+	if prep.units_screen.roster_list.get_child_count() != 2:
+		printerr("FAIL: expected 2 roster cards, got ", prep.units_screen.roster_list.get_child_count())
+		ok = false
+
+	# Toggle Lycith out of the squad from there — PrepPhase should drop her
+	# placement immediately.
+	prep._on_squad_toggled(lycith, false)
+	if prep._squad.size() != 1 or prep._squad.has(lycith):
+		printerr("FAIL: expected Lycith removed from the squad")
+		ok = false
+	if prep._unit_nodes.has(lycith):
+		printerr("FAIL: expected Lycith's placement cleared after squad removal")
+		ok = false
+	prep.units_screen.closed.emit()
+	if prep.units_screen.visible:
+		printerr("FAIL: expected UnitsScreen to close")
+		ok = false
+
+	# "Inventaire" opens the convoy screen.
+	prep._on_inventory_pressed()
+	if not prep.convoy_screen.visible:
+		printerr("FAIL: expected ConvoyScreen to be visible after pressing Inventaire")
+		ok = false
+	prep.convoy_screen.closed.emit()
+
+	# Enemies are pre-spawned on the camp map itself (see _spawn_enemies) so
+	# "Observer" has something to hover before combat even starts.
+	var enemy_zone_tile := Vector2i(8, 2)  # vex's chapter1.tres spawn position
+	if prep.grid.get_occupant(enemy_zone_tile) == null:
+		printerr("FAIL: expected an enemy pre-spawned on the camp map at ", enemy_zone_tile)
+		ok = false
+
+	# "Observer" hides the menu behind a Retour button and enables hover
+	# stat previews for both allies and enemies (see PrepPhase._process).
+	prep._on_observe_pressed()
+	if not prep._observing or prep.menu_panel.visible or not prep.back_button.visible:
+		printerr("FAIL: expected Observer mode to hide the menu and show Retour")
+		ok = false
+	prep._on_back_pressed()
+	if prep._observing or not prep.menu_panel.visible or prep.back_button.visible:
+		printerr("FAIL: expected Retour to restore the normal camp menu")
+		ok = false
+
+	# "Combattre !" emits the final placements for whoever's still in the squad.
+	var got_deployment := [null]
+	prep.prep_confirmed.connect(func(d): got_deployment[0] = d)
+	prep._on_fight_pressed()
+
+	if got_deployment[0] == null or got_deployment[0].size() != 1 or not got_deployment[0].has(aurora):
+		printerr("FAIL: prep_confirmed didn't carry the expected single-unit placement")
+		ok = false
+
+	prep.queue_free()
+	game_state.player_roster.clear()
 	return ok

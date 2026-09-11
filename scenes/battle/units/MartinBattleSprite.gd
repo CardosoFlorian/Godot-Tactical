@@ -70,6 +70,15 @@ var _pending_weapon: WeaponData
 var _pending_did_crit: bool = false
 var _projectile_spawned_this_attack := false
 
+## Built once per script (not per instance) and shared across every Martin
+## on screen — see AuroraBattleSprite's identical cache for why: rebuilding
+## these from ~44 individual load() calls (idle+attack+heal combined) on
+## EVERY instantiate() cost ~370ms per spawn, the real source of the "gros
+## lag" on entering the prep camp AND again on pressing Combattre !.
+static var _idle_frames_cache: SpriteFrames
+static var _attack_frames_cache: SpriteFrames
+static var _heal_frames_cache: SpriteFrames
+
 func _ready() -> void:
 	_build_idle_frames()
 	_build_attack_frames()
@@ -149,31 +158,34 @@ func faces_right_by_default() -> bool:
 	return true
 
 func _build_idle_frames() -> void:
-	var frames := SpriteFrames.new()
-	frames.add_animation("idle")
-	frames.set_animation_speed("idle", IDLE_FPS)
-	frames.set_animation_loop("idle", true)
-	for i in range(1, IDLE_FRAME_COUNT + 1):
-		var path := "%sidle_%02d.png" % [IDLE_FRAME_DIR, i]
-		frames.add_frame("idle", load(path))
-	_idle_sprite.sprite_frames = frames
+	if _idle_frames_cache == null:
+		_idle_frames_cache = SpriteFrames.new()
+		_idle_frames_cache.add_animation("idle")
+		_idle_frames_cache.set_animation_speed("idle", IDLE_FPS)
+		_idle_frames_cache.set_animation_loop("idle", true)
+		for i in range(1, IDLE_FRAME_COUNT + 1):
+			var path := "%sidle_%02d.png" % [IDLE_FRAME_DIR, i]
+			_idle_frames_cache.add_frame("idle", load(path))
+	_idle_sprite.sprite_frames = _idle_frames_cache
 
 func _build_attack_frames() -> void:
-	var frames := SpriteFrames.new()
-	frames.add_animation("attack")
-	frames.set_animation_speed("attack", ATTACK_FPS)
-	frames.set_animation_loop("attack", false)
-	for i in range(1, ATTACK_FRAME_COUNT + 1):
-		var path := "%sattack_%02d.png" % [ATTACK_FRAME_DIR, i]
-		frames.add_frame("attack", load(path))
-	_attack_sprite.sprite_frames = frames
+	if _attack_frames_cache == null:
+		_attack_frames_cache = SpriteFrames.new()
+		_attack_frames_cache.add_animation("attack")
+		_attack_frames_cache.set_animation_speed("attack", ATTACK_FPS)
+		_attack_frames_cache.set_animation_loop("attack", false)
+		for i in range(1, ATTACK_FRAME_COUNT + 1):
+			var path := "%sattack_%02d.png" % [ATTACK_FRAME_DIR, i]
+			_attack_frames_cache.add_frame("attack", load(path))
+	_attack_sprite.sprite_frames = _attack_frames_cache
 
 func _build_heal_frames() -> void:
-	var frames := SpriteFrames.new()
-	frames.add_animation("heal")
-	frames.set_animation_speed("heal", HEAL_FPS)
-	frames.set_animation_loop("heal", false)
-	for i in range(1, HEAL_FRAME_COUNT + 1):
-		var path := "%sheal_%02d.png" % [HEAL_FRAME_DIR, i]
-		frames.add_frame("heal", load(path))
-	_heal_sprite.sprite_frames = frames
+	if _heal_frames_cache == null:
+		_heal_frames_cache = SpriteFrames.new()
+		_heal_frames_cache.add_animation("heal")
+		_heal_frames_cache.set_animation_speed("heal", HEAL_FPS)
+		_heal_frames_cache.set_animation_loop("heal", false)
+		for i in range(1, HEAL_FRAME_COUNT + 1):
+			var path := "%sheal_%02d.png" % [HEAL_FRAME_DIR, i]
+			_heal_frames_cache.add_frame("heal", load(path))
+	_heal_sprite.sprite_frames = _heal_frames_cache

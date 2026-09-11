@@ -92,6 +92,13 @@ const CRIT_PORTRAIT_DATA := {
 const CRIT_PORTRAIT_DURATION := 0.45
 
 @export var map_data: BattleMapData
+## Squad + positions resolved by the prep phase (see PrepPhase) — keys are
+## the live persistent roster UnitData instances (GameState.player_roster),
+## values their chosen deployment tile. Set by CampaignFlow before add_child.
+## Left empty (default) when Battle.tscn is run directly in the editor
+## without going through CampaignFlow/PrepPhase — see _build_battle's
+## fallback branch.
+var player_deployment: Dictionary = {}
 
 @onready var grid: BattleGrid = $BattleGrid
 @onready var ui: BattleHUD = $BattleHUD
@@ -338,27 +345,42 @@ func _on_end_turn_pressed() -> void:
 func _build_battle(data: BattleMapData) -> void:
 	grid.setup(Vector2i(data.width, data.height), data.terrain_overrides, data.default_terrain)
 	for spawn in data.spawns:
-		if spawn.unit_data == null:
+		if spawn.unit_data == null or spawn.unit_data.team == UnitData.Team.PLAYER:
 			continue
-		# Player units come from the persistent campaign roster when one exists
-		# (so HP/deaths carry between battles); enemies are always a fresh
-		# duplicate so repeated fights against the same .tres don't bleed
-		# leftover damage from a previous battle in the same run.
-		var unit_data: UnitData = spawn.unit_data
-		if spawn.unit_data.team == UnitData.Team.PLAYER:
-			unit_data = GameState.get_roster_unit(spawn.unit_data.character_id)
+		# Enemies are always a fresh duplicate so repeated fights against the
+		# same .tres don't bleed leftover damage from a previous battle in the
+		# same run.
+		_spawn_unit(spawn.unit_data.duplicate(), spawn.spawn_position)
+	if not player_deployment.is_empty():
+		# Normal path: the prep phase (PrepPhase.gd) already resolved who's
+		# coming and where. player_deployment's keys are the live persistent
+		# roster UnitData instances (GameState.player_roster) — no roster
+		# lookup/duplicate needed, unlike the enemy loop above.
+		for unit_data: UnitData in player_deployment:
+			_spawn_unit(unit_data, player_deployment[unit_data])
+	else:
+		# Fallback for running Battle.tscn directly in the editor (F6)
+		# without going through CampaignFlow/PrepPhase — reads whatever
+		# PLAYER entries the map still has in `spawns`, same
+		# lookup-persistent-roster-or-duplicate logic the prep phase's
+		# deployment now normally replaces.
+		for spawn in data.spawns:
+			if spawn.unit_data == null or spawn.unit_data.team != UnitData.Team.PLAYER:
+				continue
+			var unit_data: UnitData = GameState.get_roster_unit(spawn.unit_data.character_id)
 			if unit_data == null:
 				unit_data = spawn.unit_data.duplicate()
-		else:
-			unit_data = spawn.unit_data.duplicate()
-		var unit: Unit = UNIT_SCENE.instantiate()
-		add_child(unit)
-		unit.setup(unit_data, spawn.spawn_position, grid)
-		grid.set_occupant(spawn.spawn_position, unit)
-		if unit_data.team == UnitData.Team.PLAYER:
-			player_units.append(unit)
-		else:
-			enemy_units.append(unit)
+			_spawn_unit(unit_data, spawn.spawn_position)
+
+func _spawn_unit(unit_data: UnitData, pos: Vector2i) -> void:
+	var unit: Unit = UNIT_SCENE.instantiate()
+	add_child(unit)
+	unit.setup(unit_data, pos, grid)
+	grid.set_occupant(pos, unit)
+	if unit_data.team == UnitData.Team.PLAYER:
+		player_units.append(unit)
+	else:
+		enemy_units.append(unit)
 
 func all_player_units_acted() -> bool:
 	for unit in player_units:

@@ -1,0 +1,117 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scenes/prep/UnitsScreen.gd" id="1"]
+[ext_resource type="StyleBoxTexture" path="res://assets/ui/panel_frame_style.tres" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/UnitInfoPanel.tscn" id="3"]
+
+[node name="UnitsScreen" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Panel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(1100, 620)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -550.0
+offset_top = -310.0
+offset_right = 550.0
+offset_bottom = 310.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = ExtResource("2")
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="TitleLabel" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+text = "Unités"
+
+[node name="HBox" type="HBoxContainer" parent="Panel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="RosterPanel" type="PanelContainer" parent="Panel/Margin/VBox/HBox"]
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = ExtResource("2")
+
+[node name="RosterScroll" type="ScrollContainer" parent="Panel/Margin/VBox/HBox/RosterPanel"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="RosterList" type="VBoxContainer" parent="Panel/Margin/VBox/HBox/RosterPanel/RosterScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="DetailPanel" type="PanelContainer" parent="Panel/Margin/VBox/HBox"]
+custom_minimum_size = Vector2(600, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = ExtResource("2")
+
+[node name="DetailVBox" type="VBoxContainer" parent="Panel/Margin/VBox/HBox/DetailPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TopRow" type="HBoxContainer" parent="Panel/Margin/VBox/HBox/DetailPanel/DetailVBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="PortraitRect" type="TextureRect" parent="Panel/Margin/VBox/HBox/DetailPanel/DetailVBox/TopRow"]
+custom_minimum_size = Vector2(180, 240)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="UnitInfoPanel" parent="Panel/Margin/VBox/HBox/DetailPanel/DetailVBox/TopRow" instance=ExtResource("3")]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="InventoryScroll" type="ScrollContainer" parent="Panel/Margin/VBox/HBox/DetailPanel/DetailVBox"]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="InventoryList" type="VBoxContainer" parent="Panel/Margin/VBox/HBox/DetailPanel/DetailVBox/InventoryScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="TechniquesLabel" type="Label" parent="Panel/Margin/VBox/HBox/DetailPanel/DetailVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+text = "Aucune technique apprise."
+autowrap_mode = 2
+
+[node name="SquadToggleButton" type="Button" parent="Panel/Margin/VBox/HBox/DetailPanel/DetailVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
+text = "Ajouter à l'escouade"
+
+[node name="CloseButton" type="Button" parent="Panel/Margin/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
+text = "Fermer"

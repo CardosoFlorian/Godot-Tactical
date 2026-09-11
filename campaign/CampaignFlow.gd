@@ -6,6 +6,8 @@ extends Node
 ## and to Dialogic only through its public Dialogic.start() API.
 
 const BATTLE_SCENE := preload("res://scenes/battle/Battle.tscn")
+const PREP_PHASE_SCENE := preload("res://scenes/prep/PrepPhase.tscn")
+const CHAPTER_1_MAP := preload("res://data/maps/chapter1.tres")
 const CHAPTER_2_MAP := preload("res://data/maps/chapter2.tres")
 const MAIN_SCENE_PATH := "res://scenes/main/Main.tscn"
 
@@ -17,6 +19,7 @@ const ROSTER_UNIT_PATHS := [
 ]
 
 var _current_battle: Battle
+var _current_prep: PrepPhase
 var _steps: Array[Dictionary] = []
 var _step_index := -1
 
@@ -31,7 +34,7 @@ func start_campaign() -> void:
 
 	_steps = [
 		{"type": "dialogue", "timeline": "res://dialogue/timelines/intro.dtl"},
-		{"type": "battle", "map": null},
+		{"type": "battle", "map": CHAPTER_1_MAP},
 		{"type": "dialogue", "timeline": "res://dialogue/timelines/interlude.dtl"},
 		{"type": "battle", "map": CHAPTER_2_MAP},
 		{"type": "dialogue", "timeline": "res://dialogue/timelines/victory.dtl"},
@@ -54,7 +57,7 @@ func _advance() -> void:
 		"dialogue":
 			_play_dialogue(step["timeline"])
 		"battle":
-			_start_battle(step.get("map"))
+			_start_prep(step.get("map"))
 		"end":
 			_return_to_main()
 
@@ -74,11 +77,37 @@ func _on_dialogue_finished() -> void:
 	SignalBus.dialogue_finished.emit(_steps[_step_index]["timeline"])
 	_advance()
 
-func _start_battle(map_override: BattleMapData) -> void:
+## Prep phase (squad selection, deployment, convoy) always runs before a
+## battle now — see PrepPhase. Its map is passed explicitly rather than
+## relying on Battle.tscn's own scene-default map_data (the old "map": null
+## step-1 special case), since PrepPhase needs a map to read before any
+## Battle instance exists.
+func _start_prep(map_data: BattleMapData) -> void:
+	_current_prep = PREP_PHASE_SCENE.instantiate()
+	_current_prep.map_data = map_data
+	_current_prep.prep_confirmed.connect(_on_prep_confirmed, CONNECT_ONE_SHOT)
+	add_child(_current_prep)
+
+func _on_prep_confirmed(deployment: Dictionary) -> void:
+	var map_data := _current_prep.map_data
+	_current_prep.queue_free()
+	_current_prep = null
+	# One frame's grace so PrepPhase's own grid/rigged-unit nodes are actually
+	# gone (queue_free only marks them for deletion at end of frame) before
+	# Battle's own heavy spawn (BattleGrid setup + every unit's rig) runs —
+	# real stutter caught live from both scenes' setup cost landing in the
+	# same frame otherwise. free() instead of queue_free() would dodge this
+	# too but isn't safe here: _current_prep is mid-way through emitting the
+	# very signal this handler is responding to, and freeing an object while
+	# it's still on the call stack is a real crash risk in Godot.
+	await get_tree().process_frame
+	_start_battle(map_data, deployment)
+
+func _start_battle(map_data: BattleMapData, deployment: Dictionary) -> void:
 	GameState.reset_for_new_battle()
 	_current_battle = BATTLE_SCENE.instantiate()
-	if map_override:
-		_current_battle.map_data = map_override
+	_current_battle.map_data = map_data
+	_current_battle.player_deployment = deployment
 	SignalBus.battle_won.connect(_on_battle_won, CONNECT_ONE_SHOT)
 	SignalBus.battle_lost.connect(_on_battle_lost, CONNECT_ONE_SHOT)
 	add_child(_current_battle)

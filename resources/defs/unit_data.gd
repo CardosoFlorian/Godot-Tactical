@@ -160,6 +160,26 @@ func tick_debuffs() -> void:
 			remaining.append(debuff)
 	active_debuffs = remaining
 
+## First code path that actually moves an item between inventories at
+## runtime (see MAX_INVENTORY_SIZE above) — used by the prep phase's convoy
+## screen. Returns false (no-op) if `target` is already full. Only appends
+## to target (doesn't auto-equip it — handing off gear shouldn't silently
+## change what the receiving unit fights with); re-clamps THIS unit's own
+## equipped_index through its setter (so last_combat_equipped_index stays in
+## sync, same as every other equip-changing call site) since the source
+## array just shrank and the old index may no longer be valid.
+func transfer_weapon_to(target: UnitData, index: int) -> bool:
+	if index < 0 or index >= inventory.size():
+		return false
+	if target.inventory.size() >= MAX_INVENTORY_SIZE:
+		return false
+	var weapon: WeaponData = inventory[index]
+	inventory.remove_at(index)
+	target.inventory.append(weapon)
+	if equipped_index >= inventory.size():
+		equipped_index = maxi(0, inventory.size() - 1)
+	return true
+
 ## Public (not the usual leading-underscore "internal" convention) since
 ## UnitInfoPanel needs this too, to show a debuffed stat in red.
 func get_debuff_total(stat: WeaponData.DebuffStat) -> int:
