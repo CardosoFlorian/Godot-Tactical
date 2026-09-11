@@ -76,6 +76,21 @@ const EXP_KILL_BONUS := 20
 ## creative design, not invented here. See TechniqueData and gain_exp.
 @export var techniques: Array[TechniqueData] = []
 
+## Max simultaneously-active conditional techniques — see
+## TechniqueData.is_conditional and equipped_techniques below. First-pass
+## number, same "tune after seeing it in play" spirit as everything else.
+const MAX_EQUIPPED_TECHNIQUES := 3
+
+## Subset of `techniques` (always already-learned and is_conditional() —
+## see equip_technique) currently active. A conditional technique granted
+## while a slot is free auto-equips itself (see _grant_technique_if_due) so
+## it isn't dead on arrival before the user builds a real equip-swap UI;
+## once full, a newly learned one stays merely learned until manually
+## equipped. A non-conditional technique (permanent stat bump, weapon
+## unlock, movement change) is never in this list at all — it doesn't need
+## a slot, it's just always on.
+@export var equipped_techniques: Array[TechniqueData] = []
+
 @export_group("Equipment")
 @export var inventory: Array[WeaponData] = []
 ## Custom setter keeps last_combat_equipped_index in sync automatically,
@@ -403,8 +418,42 @@ func _grant_technique_if_due() -> TechniqueData:
 				pass  # data placeholder only — see TechniqueData
 			TechniqueData.TechniqueType.COMBAT_BONUS:
 				pass  # nothing to apply at grant time — checked live by CombatResolver instead, see TechniqueData
+		# Auto-equip a freshly-learned conditional technique into any open
+		# slot — see equipped_techniques doc. A STAT_BUFF like Cœur de
+		# Souveraine still reaches here (is_conditional() checks its OWN
+		# post_combat_heal_percent_of_max, not `type`) even though its HP+3
+		# was already applied unconditionally above.
+		if technique.is_conditional() and equipped_techniques.size() < MAX_EQUIPPED_TECHNIQUES:
+			equipped_techniques.append(technique)
 		return technique
 	return null
+
+## Whether `technique` is currently equipped (one of this unit's active
+## conditional techniques) — see equipped_techniques doc. Meaningless (and
+## always false) for a non-conditional technique, which is never in the list.
+func is_technique_equipped(technique: TechniqueData) -> bool:
+	return equipped_techniques.has(technique)
+
+## Equips `technique` — must already be learned (in `techniques`, its
+## level_required already reached) and conditional (see
+## TechniqueData.is_conditional; a permanent technique has no slot to
+## occupy). `replacing`, if given, is unequipped first so a UI swap is one
+## call instead of unequip-then-equip. Returns false (no-op) if `technique`
+## isn't eligible, or the cap is already full and no `replacing` was given.
+func equip_technique(technique: TechniqueData, replacing: TechniqueData = null) -> bool:
+	if not technique.is_conditional() or not techniques.has(technique) or technique.level_required > level:
+		return false
+	if equipped_techniques.has(technique):
+		return true
+	if replacing != null:
+		equipped_techniques.erase(replacing)
+	if equipped_techniques.size() >= MAX_EQUIPPED_TECHNIQUES:
+		return false
+	equipped_techniques.append(technique)
+	return true
+
+func unequip_technique(technique: TechniqueData) -> void:
+	equipped_techniques.erase(technique)
 
 func _apply_stat_buff(stat: WeaponData.DebuffStat, amount: int) -> void:
 	match stat:

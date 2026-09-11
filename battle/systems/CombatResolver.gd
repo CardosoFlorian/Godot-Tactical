@@ -29,18 +29,15 @@ static func _triangle_mods(attacker: UnitData, defender: UnitData) -> Dictionary
 static func _is_magic(weapon: WeaponData) -> bool:
 	return weapon != null and weapon.weapon_type == WeaponData.WeaponType.TOME
 
-## Techniques a unit has actually reached (level_required <= its current
-## level) — see TechniqueData's COMBAT_BONUS doc. A technique stays in
-## `techniques` forever once granted (UnitData.gain_exp never removes it),
-## so this level filter is what tells "already unlocked" apart from "not
-## reached yet" for the ones (COMBAT_BONUS/PASSIVE) that don't get consumed
-## into a one-time stat change at grant time.
-static func _unlocked_techniques(unit: UnitData) -> Array[TechniqueData]:
-	var result: Array[TechniqueData] = []
-	for technique: TechniqueData in unit.techniques:
-		if technique.level_required <= unit.level:
-			result.append(technique)
-	return result
+## Every COMBAT_BONUS/post-combat-proc check below reads THIS, not the full
+## `techniques` list — a conditional technique (see TechniqueData.
+## is_conditional) does nothing unless it's one of the unit's (at most
+## UnitData.MAX_EQUIPPED_TECHNIQUES) currently EQUIPPED techniques, the
+## user's own rule. `equipped_techniques` is already guaranteed to only ever
+## hold already-learned/level-reached entries (see UnitData.equip_technique),
+## so no separate level filter is needed here.
+static func _equipped_techniques(unit: UnitData) -> Array[TechniqueData]:
+	return unit.equipped_techniques
 
 ## Attacker-side COMBAT_BONUS techniques that only fire against a specific
 ## enemy weapon type (e.g. Aurora's "Anti Hache": +20% damage vs axes).
@@ -49,7 +46,7 @@ static func _technique_damage_percent_bonus(attacker: UnitData, defender: UnitDa
 	if enemy_weapon == null:
 		return 0
 	var bonus := 0
-	for technique: TechniqueData in _unlocked_techniques(attacker):
+	for technique: TechniqueData in _equipped_techniques(attacker):
 		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
 			continue
 		if technique.trigger == TechniqueData.CombatTrigger.ENEMY_WEAPON and technique.effect == TechniqueData.CombatEffect.DAMAGE_PERCENT_BONUS and enemy_weapon.weapon_type == technique.trigger_weapon_type:
@@ -61,7 +58,7 @@ static func _technique_damage_percent_bonus(attacker: UnitData, defender: UnitDa
 static func _technique_damage_reduction(defender: UnitData) -> int:
 	var reduction := 0
 	var hp_percent := float(defender.get_current_hp()) / float(defender.get_max_hp()) * 100.0
-	for technique: TechniqueData in _unlocked_techniques(defender):
+	for technique: TechniqueData in _equipped_techniques(defender):
 		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
 			continue
 		if technique.trigger == TechniqueData.CombatTrigger.SELF_LOW_HP and technique.effect == TechniqueData.CombatEffect.DAMAGE_REDUCTION_FLAT and hp_percent < technique.trigger_hp_threshold_percent:
@@ -75,12 +72,42 @@ static func _technique_hit_bonus(attacker: UnitData) -> int:
 	if own_weapon == null:
 		return 0
 	var bonus := 0
-	for technique: TechniqueData in _unlocked_techniques(attacker):
+	for technique: TechniqueData in _equipped_techniques(attacker):
 		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
 			continue
 		if technique.trigger == TechniqueData.CombatTrigger.SELF_WEAPON and technique.effect == TechniqueData.CombatEffect.HIT_BONUS and own_weapon.weapon_type == technique.trigger_weapon_type:
 			bonus += technique.effect_amount
 	return bonus
+
+## Attacker-side COMBAT_BONUS techniques that add flat Force while wielding a
+## specific weapon type (e.g. Lycith's "Lance Puissante": +3 Force with a
+## lance). Physical only by construction — only called from get_damage's
+## non-magic branch.
+static func _technique_str_bonus(attacker: UnitData) -> int:
+	var own_weapon := attacker.get_combat_weapon()
+	if own_weapon == null:
+		return 0
+	var bonus := 0
+	for technique: TechniqueData in _equipped_techniques(attacker):
+		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
+			continue
+		if technique.trigger == TechniqueData.CombatTrigger.SELF_WEAPON and technique.effect == TechniqueData.CombatEffect.STR_BONUS_FLAT and own_weapon.weapon_type == technique.trigger_weapon_type:
+			bonus += technique.effect_amount
+	return bonus
+
+## Whether `attacker` should land its double-attack's second hit BEFORE
+## `defender`'s counter, instead of the normal hit/counter/hit order (e.g.
+## Lycith's Alacrité/Alacrité Supérieur: fast enough, both her hits land
+## before the enemy gets to swing back at all). Only ever checked against
+## the INITIATING attacker — see TechniqueData.trigger_spd_gap doc.
+static func _technique_double_before_counter(attacker: UnitData, defender: UnitData) -> bool:
+	var spd_gap := get_effective_spd(attacker) - get_effective_spd(defender)
+	for technique: TechniqueData in _equipped_techniques(attacker):
+		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
+			continue
+		if technique.trigger == TechniqueData.CombatTrigger.SPEED_GAP_ADVANTAGE and technique.effect == TechniqueData.CombatEffect.DOUBLE_BEFORE_COUNTER and spd_gap >= technique.trigger_spd_gap:
+			return true
+	return false
 
 ## Rolls TechniqueData.post_combat_heal_percent_of_max for `unit`, once per
 ## resolve_combat call, using the SAME rng resolve_combat already threads
@@ -92,7 +119,7 @@ static func _technique_hit_bonus(attacker: UnitData) -> int:
 static func _apply_post_combat_techniques(unit: UnitData, rng: RandomNumberGenerator) -> void:
 	if not unit.is_alive():
 		return
-	for technique: TechniqueData in _unlocked_techniques(unit):
+	for technique: TechniqueData in _equipped_techniques(unit):
 		if technique.post_combat_heal_percent_of_max <= 0:
 			continue
 		var chance := clampi(unit.get_str(), 0, 100)
@@ -132,7 +159,14 @@ static func get_crit_chance(attacker: UnitData, defender: UnitData) -> int:
 ## Def, and sit outside the physical weapon triangle entirely (Tome/Bow
 ## already return {0,0} from _triangle_mods since the triangle only knows
 ## Sword/Lance/Axe).
-static func get_damage(attacker: UnitData, defender: UnitData, terrain_def_bonus: int = 0) -> int:
+## `extra_physical_def` is a PHYSICAL-ONLY defense bonus (e.g. Lycith's
+## Serment Royale, computed by Battle.gd from grid/ally positions CombatResolver
+## has no access to — see TechniqueData.CombatTrigger.NEARBY_ALLIES) — kept
+## fully separate from `terrain_def_bonus`, which already feeds BOTH this
+## physical branch and the magic resistance branch below. Folding a
+## Défense-only bonus into terrain_def_bonus would leak it into Résistance
+## too, which is exactly what this parameter exists to avoid.
+static func get_damage(attacker: UnitData, defender: UnitData, terrain_def_bonus: int = 0, extra_physical_def: int = 0) -> int:
 	var weapon := attacker.get_combat_weapon()
 	if weapon == null:
 		return 0
@@ -143,8 +177,8 @@ static func get_damage(attacker: UnitData, defender: UnitData, terrain_def_bonus
 		damage = maxi(0, magic_power - resistance)
 	else:
 		var mods := _triangle_mods(attacker, defender)
-		var attack_power := attacker.get_str() + weapon.might + int(mods["might"])
-		var defense := defender.get_def() + terrain_def_bonus
+		var attack_power := attacker.get_str() + weapon.might + int(mods["might"]) + _technique_str_bonus(attacker)
+		var defense := defender.get_def() + terrain_def_bonus + extra_physical_def
 		damage = maxi(0, attack_power - defense)
 	# COMBAT_BONUS techniques (see TechniqueData) — attacker's %-vs-weapon-type
 	# bonus first, then defender's flat low-HP reduction, both applying to
@@ -181,26 +215,42 @@ static func predict_expected_damage(attacker: UnitData, defender: UnitData, terr
 ## Resolves a full combat exchange (attacker strike(s), then defender
 ## counter-strike(s) if alive and in range), applying HP changes directly to
 ## the UnitData resources. `attacker_terrain`/`defender_terrain` are
-## {"def": int, "avoid": int} bonuses from the tile each unit is standing on
-## (see BattleGrid/TerrainData) applied whenever that unit is the one being
+## {"def": int, "avoid": int, "extra_physical_def": int} bonuses from the
+## tile each unit is standing on (see BattleGrid/TerrainData) plus any
+## positional technique bonus Battle.gd folded in (see get_damage's
+## `extra_physical_def` doc) — applied whenever that unit is the one being
 ## struck. Returns a log of individual strikes for UI/replay.
 static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int, rng: RandomNumberGenerator, attacker_terrain: Dictionary = {}, defender_terrain: Dictionary = {}) -> Dictionary:
 	var log: Array[Dictionary] = []
 	var defender_weapon := defender.get_combat_weapon()
 	var defender_can_counter := is_in_weapon_range(distance, defender_weapon)
+	var attacker_doubles := can_double(attacker, defender)
 
 	## Classic GBA Fire Emblem order: attacker's first strike, then the
 	## defender's counter, and only THEN a double-attack's extra hit — never
 	## both of the attacker's hits back-to-back before the defender gets to
 	## counter. At most one side can double (the Spd gap can't favor both).
+	##
+	## EXCEPT: an initiating attacker with a DOUBLE_BEFORE_COUNTER technique
+	## active (e.g. Lycith's Alacrité — see _technique_double_before_counter)
+	## lands BOTH of its hits before the defender's counter instead — only
+	## possible for the attacker's own double, never the defender's (an
+	## attacker fast enough to double can never simultaneously be slow
+	## enough for the defender to also double, so no ordering conflict).
 	var order: Array[Dictionary] = []
+	var double_before_counter := attacker_doubles and _technique_double_before_counter(attacker, defender)
 	order.append({"source": attacker, "target": defender, "terrain": defender_terrain})
-	if defender_can_counter:
-		order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
-	if can_double(attacker, defender):
+	if double_before_counter:
 		order.append({"source": attacker, "target": defender, "terrain": defender_terrain})
-	elif defender_can_counter and can_double(defender, attacker):
-		order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
+		if defender_can_counter:
+			order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
+	else:
+		if defender_can_counter:
+			order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
+		if attacker_doubles:
+			order.append({"source": attacker, "target": defender, "terrain": defender_terrain})
+		elif defender_can_counter and can_double(defender, attacker):
+			order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
 
 	for strike in order:
 		var source: UnitData = strike["source"]
@@ -208,6 +258,7 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 		var terrain: Dictionary = strike["terrain"]
 		var terrain_def: int = terrain.get("def", 0)
 		var terrain_avoid: int = terrain.get("avoid", 0)
+		var terrain_extra_physical_def: int = terrain.get("extra_physical_def", 0)
 		if not source.is_alive() or not target.is_alive():
 			continue
 		if source.get_combat_weapon() == null:
@@ -221,7 +272,7 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 		if did_hit:
 			var crit_chance := get_crit_chance(source, target)
 			did_crit = rng.randi_range(1, 100) <= crit_chance
-			damage = get_damage(source, target, terrain_def)
+			damage = get_damage(source, target, terrain_def, terrain_extra_physical_def)
 			if did_crit:
 				damage *= CRIT_DAMAGE_MULTIPLIER
 			target.set_current_hp(target.get_current_hp() - damage)

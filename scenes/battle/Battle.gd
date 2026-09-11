@@ -209,7 +209,7 @@ func _process(_delta: float) -> void:
 		grid.clear_highlight()
 	_hovered_unit = occupant
 	if occupant:
-		ui.show_hover_unit(occupant.unit_data)
+		ui.show_hover_unit(occupant.unit_data, _ally_def_bonus(occupant))
 		show_unit_range(occupant, get_move_range(occupant))
 
 ## Previews the combat stats panel (see CombatStatsHUD) when hovering a
@@ -561,6 +561,7 @@ func _equip_sole_action_weapon(unit: Unit, action: String) -> void:
 		if weapon.matches_action(action):
 			unit_data.equipped_index = i
 			SignalBus.unit_selected.emit(unit)
+			refresh_unit_info_display(unit)
 			return
 
 ## Allies (self included — targeting yourself is a valid choice) within the
@@ -723,6 +724,7 @@ func revert_equipped_weapon(unit: Unit) -> void:
 	if unit.unit_data.equipped_index != selected_unit_start_equipped_index:
 		unit.unit_data.equipped_index = selected_unit_start_equipped_index
 		SignalBus.unit_selected.emit(unit)
+		refresh_unit_info_display(unit)
 
 ## Resolves a full attack (distance, terrain bonuses, RNG, HP application,
 ## death handling) between two units already in position. Shared by manual
@@ -732,6 +734,8 @@ func execute_attack(attacker: Unit, defender: Unit) -> void:
 	var distance := absi(attacker.grid_pos.x - defender.grid_pos.x) + absi(attacker.grid_pos.y - defender.grid_pos.y)
 	var attacker_terrain := grid.get_terrain_combat_bonus(attacker.grid_pos)
 	var defender_terrain := grid.get_terrain_combat_bonus(defender.grid_pos)
+	attacker_terrain["extra_physical_def"] = _ally_def_bonus(attacker)
+	defender_terrain["extra_physical_def"] = _ally_def_bonus(defender)
 	SignalBus.combat_started.emit(attacker, defender)
 
 	# CombatResolver applies every strike's HP change immediately, all at
@@ -826,6 +830,7 @@ func _grant_exp_and_show_level_ups(unit: Unit, amount: int) -> void:
 		await exp_gain_overlay.animate_fill(unit_data, 0, unit_data.exp)
 	exp_gain_overlay.hide_overlay()
 	SignalBus.unit_selected.emit(unit)
+	refresh_unit_info_display(unit)
 
 ## Dmg/Hit/Crit each combatant would deal against the other at their
 ## current positions — used both for the real combat scene and for the
@@ -845,8 +850,8 @@ func _compute_combat_stats(attacker: Unit, defender: Unit) -> Dictionary:
 	var defender_hits := 0
 	if defender_can_counter:
 		defender_hits = 2 if CombatResolver.can_double(defender.unit_data, attacker.unit_data) else 1
-	var attacker_swing := CombatResolver.get_damage(attacker.unit_data, defender.unit_data, defender_terrain["def"])
-	var defender_swing := CombatResolver.get_damage(defender.unit_data, attacker.unit_data, attacker_terrain["def"]) if defender_can_counter else 0
+	var attacker_swing := CombatResolver.get_damage(attacker.unit_data, defender.unit_data, defender_terrain["def"], _ally_def_bonus(defender))
+	var defender_swing := CombatResolver.get_damage(defender.unit_data, attacker.unit_data, attacker_terrain["def"], _ally_def_bonus(attacker)) if defender_can_counter else 0
 	return {
 		"attacker_hit": CombatResolver.get_hit_chance(attacker.unit_data, defender.unit_data, defender_terrain["avoid"]),
 		"attacker_dmg": attacker_swing * attacker_hits,
@@ -858,6 +863,50 @@ func _compute_combat_stats(attacker: Unit, defender: Unit) -> Dictionary:
 		"defender_crit": CombatResolver.get_crit_chance(defender.unit_data, attacker.unit_data) if defender_can_counter else 0,
 		"defender_can_counter": defender_can_counter,
 	}
+
+## "Serment Royale"-style techniques (TechniqueData.CombatTrigger.NEARBY_ALLIES) —
+## the one COMBAT_BONUS variant CombatResolver can't check itself, since it
+## needs the ally roster + grid positions only Battle.gd has. Folded into a
+## dedicated "extra_physical_def" terrain-dict key (see
+## CombatResolver.get_damage) so it only ever touches Défense, never
+## Résistance, the way plain "def" already would if reused for this. Reads
+## `equipped_techniques`, not the full `techniques` list — a conditional
+## technique like this one does nothing unless equipped (see
+## TechniqueData.is_conditional/UnitData.equipped_techniques), same rule
+## CombatResolver's own technique checks follow.
+func _ally_def_bonus(unit: Unit) -> int:
+	var bonus := 0
+	for technique: TechniqueData in unit.unit_data.equipped_techniques:
+		if technique.trigger != TechniqueData.CombatTrigger.NEARBY_ALLIES or technique.effect != TechniqueData.CombatEffect.DEF_BONUS_PHYSICAL_ONLY:
+			continue
+		if _count_nearby_allies(unit, technique.trigger_ally_radius) >= technique.trigger_ally_count:
+			bonus += technique.effect_amount
+	return bonus
+
+## Real gap caught live: Serment Royale's Défense bonus was correct in
+## combat math but never showed up on the stat panel itself — the user's
+## own call, "tu donnes des stats à une unité mais tu montres pas les
+## stats." UnitInfoPanel has no grid/roster access to compute this itself
+## (see _ally_def_bonus's own doc), so every SignalBus.unit_selected emit
+## site (3 here, 3 more in EquipMenuState/UnitSelectState/WeaponPickerState,
+## all with a `battle` reference) calls this right after, to correctly
+## overwrite whatever the signal-driven refresh in BattleHUD just showed
+## with no bonus.
+func refresh_unit_info_display(unit: Unit) -> void:
+	ui.unit_info_panel.show_unit(unit.unit_data, _ally_def_bonus(unit))
+
+## Manhattan-distance ally count within `radius` tiles of `unit`, same team
+## only, excluding `unit` itself.
+func _count_nearby_allies(unit: Unit, radius: int) -> int:
+	var allies := player_units if unit.unit_data.team == UnitData.Team.PLAYER else enemy_units
+	var count := 0
+	for other in allies:
+		if other == unit or not is_instance_valid(other):
+			continue
+		var dist := absi(other.grid_pos.x - unit.grid_pos.x) + absi(other.grid_pos.y - unit.grid_pos.y)
+		if dist <= radius:
+			count += 1
+	return count
 
 ## Bow/tome users don't close the distance for a clash the way melee weapons
 ## do — used both to skip the initial stage-approach step and each strike's

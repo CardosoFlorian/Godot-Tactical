@@ -43,8 +43,8 @@ func _ready() -> void:
 func _on_unit_selected(unit) -> void:
 	unit_info_panel.show_unit(unit.unit_data)
 
-func show_hover_unit(unit_data: UnitData) -> void:
-	hover_info_panel.show_unit(unit_data)
+func show_hover_unit(unit_data: UnitData, extra_def_bonus: int = 0) -> void:
+	hover_info_panel.show_unit(unit_data, extra_def_bonus)
 
 func hide_hover_unit() -> void:
 	hover_info_panel.hide_panel()

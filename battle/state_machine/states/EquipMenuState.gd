@@ -33,6 +33,7 @@ func handle_weapon_selected(index: int) -> void:
 	# was equipped when the unit was first selected, updating only on some
 	# LATER unrelated event that happens to re-emit it.
 	SignalBus.unit_selected.emit(unit)
+	battle.refresh_unit_info_display(unit)
 	# Equipping something other than what the unit started its turn with,
 	# while still in the pre-move menu, spends the unit's move — same rule
 	# as clicking Attack/Heal from the pre-move quick menu (MoveState),

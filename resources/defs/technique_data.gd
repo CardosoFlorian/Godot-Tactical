@@ -70,8 +70,26 @@ enum TechniqueType { STAT_BUFF, WEAPON_UNLOCK, MOVEMENT_CHANGE, PASSIVE, COMBAT_
 ## weapon-matchup/self-HP situational bonuses only.)
 @export_multiline var description: String = ""
 
-enum CombatTrigger { SELF_WEAPON, ENEMY_WEAPON, SELF_LOW_HP }
-enum CombatEffect { DAMAGE_PERCENT_BONUS, HIT_BONUS, DAMAGE_REDUCTION_FLAT }
+## SPEED_GAP_ADVANTAGE (added for Lycith's Alacrité/Alacrité Supérieur) and
+## NEARBY_ALLIES (added for her Serment Royale) both need context
+## CombatResolver's pure attacker/defender math doesn't have — an ally roster
+## with positions, for NEARBY_ALLIES — so unlike every other trigger here,
+## they're NOT checked by CombatResolver's own _unlocked_techniques-based
+## helpers. SPEED_GAP_ADVANTAGE is checked inline in resolve_combat itself
+## (it already computes effective Spd for both sides). NEARBY_ALLIES is
+## checked by Battle.gd, the only place with grid/unit-roster access, which
+## folds the result into a NEW "extra_physical_def" terrain-dict key kept
+## deliberately separate from "def" (see get_damage) — Serment Royale is
+## Défense only, not Résistance, and terrain "def" already feeds both.
+enum CombatTrigger { SELF_WEAPON, ENEMY_WEAPON, SELF_LOW_HP, SPEED_GAP_ADVANTAGE, NEARBY_ALLIES }
+## STR_BONUS_FLAT and DEF_BONUS_PHYSICAL_ONLY both add to the physical
+## attack_power/defense computed inside get_damage's non-magic branch (NOT a
+## post-calc flat reduction like DAMAGE_REDUCTION_FLAT, which applies after
+## and to both damage paths) — see get_damage for exactly where each lands.
+## DOUBLE_BEFORE_COUNTER carries no magnitude (effect_amount is unused for
+## it) — it's a yes/no reordering of resolve_combat's strike sequence, not a
+## number.
+enum CombatEffect { DAMAGE_PERCENT_BONUS, HIT_BONUS, DAMAGE_REDUCTION_FLAT, DOUBLE_BEFORE_COUNTER, STR_BONUS_FLAT, DEF_BONUS_PHYSICAL_ONLY }
 
 ## COMBAT_BONUS only.
 @export var trigger: CombatTrigger = CombatTrigger.SELF_WEAPON
@@ -79,6 +97,15 @@ enum CombatEffect { DAMAGE_PERCENT_BONUS, HIT_BONUS, DAMAGE_REDUCTION_FLAT }
 @export var trigger_weapon_type: WeaponData.WeaponType = WeaponData.WeaponType.SWORD
 ## SELF_LOW_HP only — active while current HP is BELOW this % of max HP.
 @export var trigger_hp_threshold_percent: int = 50
+## SPEED_GAP_ADVANTAGE only — active while the unit's own effective Spd
+## exceeds its opponent's by at least this much, and only when the unit is
+## the one INITIATING combat (checked against `attacker` specifically in
+## resolve_combat, never against a defender/counter-attacker — the user's
+## own call for Alacrité: "Si l'unité initie le combat").
+@export var trigger_spd_gap: int = 5
+## NEARBY_ALLIES only.
+@export var trigger_ally_radius: int = 2
+@export var trigger_ally_count: int = 2
 @export var effect: CombatEffect = CombatEffect.HIT_BONUS
 @export var effect_amount: int = 0
 
@@ -91,3 +118,91 @@ enum CombatEffect { DAMAGE_PERCENT_BONUS, HIT_BONUS, DAMAGE_REDUCTION_FLAT }
 ## fires per-strike mid-combat — this triggers once, after the whole
 ## exchange resolves. See CombatResolver.resolve_combat's post-combat pass.
 @export var post_combat_heal_percent_of_max: int = 0
+
+## Whether this technique needs to be one of a unit's (at most
+## UnitData.MAX_EQUIPPED_TECHNIQUES) EQUIPPED techniques to have any effect
+## at all, rather than being permanently active from the instant it's
+## learned — the user's own rule. WEAPON_UNLOCK, MOVEMENT_CHANGE, and an
+## unconditional STAT_BUFF (its stat/stat2/hp_bonus effects are one-time,
+## permanent base_X mutations applied once at grant time — there's nothing
+## left to "unequip") are NEVER gated this way. Anything with a live,
+## situational check IS gated — every COMBAT_BONUS technique, or a
+## post-combat proc — even one that's nominally STAT_BUFF-typed like
+## Aurora's Cœur de Souveraine: its HP+3 stays permanent/always-on, but its
+## post_combat_heal_percent_of_max proc specifically needs equipping to fire.
+func is_conditional() -> bool:
+	return type == TechniqueType.COMBAT_BONUS or post_combat_heal_percent_of_max > 0
+
+## Full stat names (unlike WeaponData.DEBUFF_STAT_LABELS' abbreviations —
+## those are sized for a tight combat notice, this is for a readable hover
+## tooltip) indexed by WeaponData.DebuffStat.
+const STAT_FULL_LABELS: Array[String] = ["", "Force", "Magie", "Technique", "Vitesse", "Chance", "Défense", "Résistance"]
+
+## Human-readable (French) description of what this technique actually
+## does, built from its own fields rather than authored separately per
+## technique — used for UnitsScreen's hover tooltip so a player (or the
+## user testing in the editor) can see the mechanical effect, not just the
+## flavor name.
+func get_effect_description() -> String:
+	match type:
+		TechniqueType.STAT_BUFF:
+			return _describe_stat_buff()
+		TechniqueType.WEAPON_UNLOCK:
+			return "Débloque l'utilisation des armes de type %s." % WeaponData.WEAPON_TYPE_LABELS[weapon_type]
+		TechniqueType.MOVEMENT_CHANGE:
+			return "Change le type de déplacement de l'unité."
+		TechniqueType.PASSIVE:
+			return description if description != "" else "Technique passive (sans effet mécanique pour l'instant)."
+		TechniqueType.COMBAT_BONUS:
+			return _describe_combat_bonus()
+	return ""
+
+func _describe_stat_buff() -> String:
+	var parts: Array[String] = []
+	if stat != WeaponData.DebuffStat.NONE:
+		parts.append("%s +%d" % [STAT_FULL_LABELS[stat], stat_amount])
+	if stat2 != WeaponData.DebuffStat.NONE:
+		parts.append("%s +%d" % [STAT_FULL_LABELS[stat2], stat2_amount])
+	if hp_bonus != 0:
+		parts.append("PV +%d" % hp_bonus)
+	var text := ", ".join(parts)
+	# Clarified per the user's own request — a technique mixing a permanent
+	# stat bump with a gated proc (currently only Aurora's Cœur de
+	# Souveraine) could otherwise read as if the WHOLE thing needs equipping.
+	# It doesn't: stat/stat2/hp_bonus are one-time base_X mutations already
+	# applied the instant the technique is learned (see
+	# UnitData._grant_technique_if_due), regardless of equip state — only
+	# the proc below is gated (see TechniqueData.is_conditional).
+	if post_combat_heal_percent_of_max > 0:
+		text += " (permanent, actif dès l'apprentissage même si la technique n'est pas équipée)"
+		text += "\nAprès un combat, si équipée : chance égale à sa Force de récupérer %d%% de ses PV max." % post_combat_heal_percent_of_max
+	return text
+
+func _describe_combat_bonus() -> String:
+	var condition := ""
+	match trigger:
+		CombatTrigger.SELF_WEAPON:
+			condition = "Si l'unité est équipée d'une %s" % WeaponData.WEAPON_TYPE_LABELS[trigger_weapon_type]
+		CombatTrigger.ENEMY_WEAPON:
+			condition = "Si l'ennemi est équipé d'une %s" % WeaponData.WEAPON_TYPE_LABELS[trigger_weapon_type]
+		CombatTrigger.SELF_LOW_HP:
+			condition = "Si l'unité a moins de %d%% de ses PV max" % trigger_hp_threshold_percent
+		CombatTrigger.SPEED_GAP_ADVANTAGE:
+			condition = "Si l'unité initie le combat avec au moins %d points de Vitesse de plus que l'ennemi" % trigger_spd_gap
+		CombatTrigger.NEARBY_ALLIES:
+			condition = "Si %d alliés ou plus se trouvent à %d case(s) ou moins" % [trigger_ally_count, trigger_ally_radius]
+	var effect_text := ""
+	match effect:
+		CombatEffect.DAMAGE_PERCENT_BONUS:
+			effect_text = "augmente les dégâts infligés de %d%%." % effect_amount
+		CombatEffect.HIT_BONUS:
+			effect_text = "augmente la précision de %d." % effect_amount
+		CombatEffect.DAMAGE_REDUCTION_FLAT:
+			effect_text = "réduit les dégâts subis de %d." % effect_amount
+		CombatEffect.DOUBLE_BEFORE_COUNTER:
+			effect_text = "sa seconde frappe (si double attaque) se déclenche avant la riposte adverse."
+		CombatEffect.STR_BONUS_FLAT:
+			effect_text = "augmente la Force de %d." % effect_amount
+		CombatEffect.DEF_BONUS_PHYSICAL_ONLY:
+			effect_text = "augmente la Défense de %d." % effect_amount
+	return "%s, %s" % [condition, effect_text]

@@ -23,7 +23,9 @@ func setup(data: UnitData) -> void:
 	unit_data = data
 	portrait_rect.texture = _load_portrait(data.character_id)
 	name_label.text = data.display_name
-	class_label.text = "%s — Niveau %d" % [data.get_class_display_name(), data.level]
+	# Always a player-roster unit here (GameState.get_living_roster()), never
+	# an enemy — no leftover "Épéiste"/"Lancier" class label, just the level.
+	class_label.text = "Niveau %d" % data.level
 	selected_badge.visible = false
 
 ## Shows the "in squad" checkmark badge — independent of set_viewing below,

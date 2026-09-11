@@ -67,6 +67,13 @@ func _ready() -> void:
 	back_button.hide()
 	units_screen.closed.connect(_on_subscreen_closed)
 	units_screen.squad_toggled.connect(_on_squad_toggled)
+	# UnitsScreen has no grid of its own to compute a positional technique
+	# bonus (Serment Royale-style) with — same reason Battle.gd has to do it
+	# for its own stat panels (see _ally_def_bonus below) — so it's handed a
+	# Callable back into this screen instead, the user's own call: "quand y'a
+	# des stats modifiées grâce aux techniques... tu le changes partout," not
+	# just in real battle.
+	units_screen.get_ally_def_bonus = _ally_def_bonus_for
 	convoy_screen.closed.connect(_on_subscreen_closed)
 
 	grid.setup(Vector2i(map_data.width, map_data.height), map_data.terrain_overrides, map_data.default_terrain)
@@ -147,9 +154,41 @@ func _process(_delta: float) -> void:
 		return
 	_hovered_unit = occupant
 	if occupant:
-		hover_info_panel.show_unit(occupant.unit_data)
+		hover_info_panel.show_unit(occupant.unit_data, _ally_def_bonus(occupant))
 	else:
 		hover_info_panel.hide_panel()
+
+## Same mechanism as Battle._ally_def_bonus/_count_nearby_allies, copied
+## rather than shared through some new utility file — small enough, and
+## simpler here since every placed unit on the camp map is player-team,
+## no team filter needed. Kept in sync by hand if the real rule changes.
+func _ally_def_bonus(unit: Unit) -> int:
+	var bonus := 0
+	for technique: TechniqueData in unit.unit_data.equipped_techniques:
+		if technique.trigger != TechniqueData.CombatTrigger.NEARBY_ALLIES or technique.effect != TechniqueData.CombatEffect.DEF_BONUS_PHYSICAL_ONLY:
+			continue
+		if _count_nearby_allies(unit, technique.trigger_ally_radius) >= technique.trigger_ally_count:
+			bonus += technique.effect_amount
+	return bonus
+
+func _count_nearby_allies(unit: Unit, radius: int) -> int:
+	var count := 0
+	for unit_data: UnitData in _unit_nodes:
+		var other: Unit = _unit_nodes[unit_data]
+		if other == unit:
+			continue
+		var dist := absi(other.grid_pos.x - unit.grid_pos.x) + absi(other.grid_pos.y - unit.grid_pos.y)
+		if dist <= radius:
+			count += 1
+	return count
+
+## UnitsScreen's injected Callable (see _ready) — looks up whichever live
+## Unit node `unit_data` currently corresponds to (null if it's not
+## currently placed on the map at all, e.g. benched or mid-pickup) and
+## reads its positional technique bonus the normal way.
+func _ally_def_bonus_for(unit_data: UnitData) -> int:
+	var unit: Unit = _unit_nodes.get(unit_data)
+	return _ally_def_bonus(unit) if unit else 0
 
 func _on_observe_pressed() -> void:
 	_observing = true

@@ -16,6 +16,14 @@ const PROFICIENCY_ICONS: Array[Texture2D] = [
 ## Reset color for a stat Label once any debuff on it expires — see _set_stat.
 const NORMAL_STAT_COLOR := Color.WHITE
 const DEBUFF_STAT_COLOR := Color(1.0, 0.35, 0.35, 1)
+## A stat currently boosted by a live technique bonus (e.g. Lycith's Serment
+## Royale, Lance Puissante) — same green LevelUpScreen already uses for a
+## permanent stat gain, reused here for a situational one. Real gap caught
+## live: this panel showed base stats only, so a technique's combat-math
+## effect (already verified correct) never showed up anywhere the player
+## could actually see it — user: "tu donnes des stats à une unité mais tu
+## montres pas les stats."
+const BUFF_STAT_COLOR := Color(0.4, 1.0, 0.4, 1)
 
 ## Indexed by ClassData.MovementType (INFANTRY=0, MOUNTED=1, FLYING=2).
 ## Unlike PROFICIENCY_ICONS above (all 5 shown, unusable ones dimmed), only
@@ -59,9 +67,20 @@ const MOVEMENT_ICONS: Array[Texture2D] = [
 func _ready() -> void:
 	hide()
 
-func show_unit(unit_data: UnitData) -> void:
+## `extra_def_bonus` is a live positional technique bonus (Serment
+## Royale-style) the caller computed externally — this panel has no
+## grid/roster access to work it out itself (see Battle._ally_def_bonus).
+## A SELF_WEAPON Force bonus (Lance Puissante-style), by contrast, needs
+## nothing external — it only depends on unit_data's own equipped weapon
+## and techniques, so it's computed right here via
+## CombatResolver._technique_str_bonus, reused rather than duplicated.
+func show_unit(unit_data: UnitData, extra_def_bonus: int = 0) -> void:
 	name_label.text = unit_data.display_name
-	class_label.text = "%s Niv.%d" % [unit_data.get_class_display_name(), unit_data.level]
+	# No unit shows a class name here anymore, not even a regular enemy —
+	# display_name alone (e.g. "Bandit") already carries that identity per
+	# enemy_naming_convention; class_label is just the level for everyone now,
+	# not a redundant/leftover class label ("Épéiste", or a second "Bandit").
+	class_label.text = "Niv.%d" % unit_data.level
 	_show_proficiencies(unit_data)
 	_show_movement_type(unit_data)
 	hp_bar.max_value = unit_data.get_max_hp()
@@ -76,11 +95,11 @@ func show_unit(unit_data: UnitData) -> void:
 	if exp_bar.visible:
 		_set_exp_display(unit_data.exp)
 
-	_set_stat(stat_str, "Force", unit_data.get_str(), unit_data, WeaponData.DebuffStat.STR)
+	_set_stat(stat_str, "Force", unit_data.get_str(), unit_data, WeaponData.DebuffStat.STR, CombatResolver._technique_str_bonus(unit_data))
 	_set_stat(stat_mag, "Magie", unit_data.get_mag(), unit_data, WeaponData.DebuffStat.MAG)
 	_set_stat(stat_skl, "Technique", unit_data.get_skl(), unit_data, WeaponData.DebuffStat.SKL)
 	_set_stat(stat_spd, "Vitesse", unit_data.get_spd(), unit_data, WeaponData.DebuffStat.SPD)
-	_set_stat(stat_def, "Defense", unit_data.get_def(), unit_data, WeaponData.DebuffStat.DEF)
+	_set_stat(stat_def, "Defense", unit_data.get_def(), unit_data, WeaponData.DebuffStat.DEF, extra_def_bonus)
 	_set_stat(stat_res, "Resist.", unit_data.get_res(), unit_data, WeaponData.DebuffStat.RES)
 	_set_stat(stat_lck, "Chance", unit_data.get_lck(), unit_data, WeaponData.DebuffStat.LCK)
 	stat_con.text = "Constit. %d" % unit_data.get_con()
@@ -93,13 +112,20 @@ func show_unit(unit_data: UnitData) -> void:
 
 	show()
 
-## Sets a stat label's text AND colors it red whenever an active debuff is
-## currently lowering that stat, white otherwise — re-set every call (not
-## just when debuffed) since the SAME Label nodes are reused across
-## show_unit() calls for different units/turns, so a stat that was red last
-## time needs to be explicitly reset once its debuff expires or a different,
-## non-debuffed unit is shown.
-func _set_stat(label: Label, prefix: String, value: int, unit_data: UnitData, stat: WeaponData.DebuffStat) -> void:
+## Sets a stat label's text AND colors it: green with a "(+N)" suffix while
+## `bonus` (a live technique effect, e.g. Serment Royale/Lance Puissante) is
+## active, red whenever an active debuff is lowering the stat instead, white
+## otherwise. Re-set every call (not just when relevant) since the SAME
+## Label nodes are reused across show_unit() calls for different units/
+## turns, so a color from last time needs to be explicitly reset once it no
+## longer applies. `bonus` takes priority over a debuff on the same stat —
+## not expected to co-occur in practice, but a buffed display reads more
+## usefully than a red one if it somehow did.
+func _set_stat(label: Label, prefix: String, value: int, unit_data: UnitData, stat: WeaponData.DebuffStat, bonus: int = 0) -> void:
+	if bonus > 0:
+		label.text = "%s %d (+%d)" % [prefix, value + bonus, bonus]
+		label.add_theme_color_override("font_color", BUFF_STAT_COLOR)
+		return
 	label.text = "%s %d" % [prefix, value]
 	var is_debuffed := unit_data.get_debuff_total(stat) > 0
 	label.add_theme_color_override("font_color", DEBUFF_STAT_COLOR if is_debuffed else NORMAL_STAT_COLOR)

@@ -18,6 +18,7 @@ func handle_unit_clicked(unit: Unit) -> void:
 	battle.selected_unit_start_pos = unit.grid_pos
 	battle.selected_unit_start_equipped_index = unit.unit_data.equipped_index
 	SignalBus.unit_selected.emit(unit)
+	battle.refresh_unit_info_display(unit)
 	if unit.has_moved:
 		state_machine.change_state("action_menu")
 	else:

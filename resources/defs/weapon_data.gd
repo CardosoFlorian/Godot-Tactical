@@ -23,6 +23,11 @@ enum DebuffStat { NONE, STR, MAG, SKL, SPD, LCK, DEF, RES }
 ## source of truth instead of two copies drifting apart.
 const DEBUFF_STAT_LABELS: Array[String] = ["", "FOR", "MAG", "TEC", "VIT", "CHA", "DEF", "RES"]
 
+## Indexed by WeaponType — French names, used wherever a weapon type needs to
+## be named in full rather than as an icon (e.g. TechniqueData's hover
+## tooltip describing a weapon-conditional technique).
+const WEAPON_TYPE_LABELS: Array[String] = ["Épée", "Lance", "Hache", "Arc", "Tome", "Faux", "Gantelet"]
+
 @export var display_name: String = "Weapon"
 @export var weapon_type: WeaponType = WeaponType.SWORD
 @export var might: int = 5

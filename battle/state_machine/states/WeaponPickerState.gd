@@ -43,6 +43,7 @@ func handle_weapon_selected(index: int) -> void:
 		return
 	unit_data.equipped_index = index
 	SignalBus.unit_selected.emit(unit)
+	battle.refresh_unit_info_display(unit)
 	state_machine.change_state(TARGET_STATE[action])
 
 func handle_cancel() -> void:
