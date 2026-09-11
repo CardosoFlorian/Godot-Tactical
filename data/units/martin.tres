@@ -7,6 +7,12 @@
 [ext_resource type="PackedScene" path="res://scenes/battle/units/MartinBattleSprite.tscn" id="6"]
 [ext_resource type="Resource" path="res://data/weapons/heal_tome.tres" id="7"]
 [ext_resource type="Texture2D" path="res://assets/units/martin/full_body.png" id="8"]
+[ext_resource type="Resource" path="res://data/techniques/martin_etincelle_studieuse.tres" id="9"]
+[ext_resource type="Resource" path="res://data/techniques/martin_savoir_rival.tres" id="10"]
+[ext_resource type="Resource" path="res://data/techniques/martin_rempart_studieux.tres" id="11"]
+[ext_resource type="Resource" path="res://data/techniques/martin_precision_arcanique.tres" id="12"]
+[ext_resource type="Resource" path="res://data/techniques/martin_lecture_du_combat.tres" id="13"]
+[ext_resource type="Resource" path="res://data/techniques/martin_oeil_du_lettre.tres" id="14"]
 
 [resource]
 script = ExtResource("1")
@@ -19,25 +25,26 @@ class_display_name = "Mage"
 movement_type = 0
 usable_weapon_types = Array[int]([4])
 exp = 0
-base_hp = 17
-base_str = 3
-base_mag = 6
-base_skl = 6
-base_spd = 7
-base_lck = 5
-base_def = 2
-base_res = 6
+base_hp = 19
+base_str = 4
+base_mag = 8
+base_skl = 7
+base_spd = 8
+base_lck = 6
+base_def = 3
+base_res = 8
 base_con = 5
 base_mov = 5
-growth_hp = 60
-growth_str = 10
-growth_mag = 45
-growth_skl = 35
-growth_spd = 30
-growth_lck = 25
-growth_def = 10
-growth_res = 30
+growth_hp = 40
+growth_str = 15
+growth_mag = 70
+growth_skl = 50
+growth_spd = 40
+growth_lck = 30
+growth_def = 15
+growth_res = 55
 growth_con = 0
+techniques = Array[TechniqueData]([ExtResource("9"), ExtResource("10"), ExtResource("11"), ExtResource("12"), ExtResource("13"), ExtResource("14")])
 inventory = Array[WeaponData]([ExtResource("3"), ExtResource("7")])
 equipped_index = 0
 portrait = ExtResource("5")

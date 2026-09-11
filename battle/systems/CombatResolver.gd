@@ -95,6 +95,24 @@ static func _technique_str_bonus(attacker: UnitData) -> int:
 			bonus += technique.effect_amount
 	return bonus
 
+## Defender-side flat avoid bonus (see TechniqueData.avoid_bonus_while_equipped)
+## — independent of `type`, so it fires for a STAT_BUFF technique like
+## Martin's Œil du Lettré too, not just COMBAT_BONUS ones. Also gated on the
+## defender's own currently wielded weapon matching trigger_weapon_type
+## (e.g. only while actually holding a Tome) — real bug caught by the user:
+## the first version only checked the equip-SLOT, never the weapon, so the
+## bonus fired even in a hypothetical where the technique-holder wasn't
+## wielding the matching weapon type at all.
+static func _technique_avoid_bonus(defender: UnitData) -> int:
+	var own_weapon := defender.get_combat_weapon()
+	if own_weapon == null:
+		return 0
+	var bonus := 0
+	for technique: TechniqueData in _equipped_techniques(defender):
+		if technique.avoid_bonus_while_equipped > 0 and own_weapon.weapon_type == technique.trigger_weapon_type:
+			bonus += technique.avoid_bonus_while_equipped
+	return bonus
+
 ## Whether `attacker` should land its double-attack's second hit BEFORE
 ## `defender`'s counter, instead of the normal hit/counter/hit order (e.g.
 ## Lycith's Alacrité/Alacrité Supérieur: fast enough, both her hits land
@@ -139,13 +157,20 @@ static func get_effective_spd(unit: UnitData) -> int:
 	var penalty := maxi(0, weapon.weight - unit.get_con())
 	return maxi(0, unit.get_spd() - penalty)
 
-static func get_hit_chance(attacker: UnitData, defender: UnitData, terrain_avoid_bonus: int = 0) -> int:
+## `extra_attacker_hit_bonus` is a positional technique bonus to the
+## ATTACKER's own precision (e.g. Martin's Lecture du Combat: +20 hit with
+## 2+ allies nearby) — computed externally by Battle.gd from grid/ally
+## positions the same way Serment Royale's extra_physical_def is, since
+## CombatResolver's pure attacker/defender math has no roster access. Kept
+## as its own parameter rather than folded into terrain_avoid_bonus, which
+## is defender-side.
+static func get_hit_chance(attacker: UnitData, defender: UnitData, terrain_avoid_bonus: int = 0, extra_attacker_hit_bonus: int = 0) -> int:
 	var weapon := attacker.get_combat_weapon()
 	if weapon == null:
 		return 0
 	var mods := _triangle_mods(attacker, defender)
-	var attack_hit := weapon.hit + attacker.get_skl() * 2 + attacker.get_lck() / 2 + int(mods["hit"]) + _technique_hit_bonus(attacker)
-	var avoid := get_effective_spd(defender) * 2 + defender.get_lck() + terrain_avoid_bonus
+	var attack_hit := weapon.hit + attacker.get_skl() * 2 + attacker.get_lck() / 2 + int(mods["hit"]) + _technique_hit_bonus(attacker) + extra_attacker_hit_bonus
+	var avoid := get_effective_spd(defender) * 2 + defender.get_lck() + terrain_avoid_bonus + _technique_avoid_bonus(defender)
 	return clampi(attack_hit - avoid, 0, 100)
 
 static func get_crit_chance(attacker: UnitData, defender: UnitData) -> int:
@@ -239,31 +264,33 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 	## enough for the defender to also double, so no ordering conflict).
 	var order: Array[Dictionary] = []
 	var double_before_counter := attacker_doubles and _technique_double_before_counter(attacker, defender)
-	order.append({"source": attacker, "target": defender, "terrain": defender_terrain})
+	order.append({"source": attacker, "target": defender, "terrain": defender_terrain, "source_terrain": attacker_terrain})
 	if double_before_counter:
-		order.append({"source": attacker, "target": defender, "terrain": defender_terrain})
+		order.append({"source": attacker, "target": defender, "terrain": defender_terrain, "source_terrain": attacker_terrain})
 		if defender_can_counter:
-			order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
+			order.append({"source": defender, "target": attacker, "terrain": attacker_terrain, "source_terrain": defender_terrain})
 	else:
 		if defender_can_counter:
-			order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
+			order.append({"source": defender, "target": attacker, "terrain": attacker_terrain, "source_terrain": defender_terrain})
 		if attacker_doubles:
-			order.append({"source": attacker, "target": defender, "terrain": defender_terrain})
+			order.append({"source": attacker, "target": defender, "terrain": defender_terrain, "source_terrain": attacker_terrain})
 		elif defender_can_counter and can_double(defender, attacker):
-			order.append({"source": defender, "target": attacker, "terrain": attacker_terrain})
+			order.append({"source": defender, "target": attacker, "terrain": attacker_terrain, "source_terrain": defender_terrain})
 
 	for strike in order:
 		var source: UnitData = strike["source"]
 		var target: UnitData = strike["target"]
 		var terrain: Dictionary = strike["terrain"]
+		var source_terrain: Dictionary = strike["source_terrain"]
 		var terrain_def: int = terrain.get("def", 0)
 		var terrain_avoid: int = terrain.get("avoid", 0)
 		var terrain_extra_physical_def: int = terrain.get("extra_physical_def", 0)
+		var source_ally_hit_bonus: int = source_terrain.get("ally_hit_bonus", 0)
 		if not source.is_alive() or not target.is_alive():
 			continue
 		if source.get_combat_weapon() == null:
 			continue
-		var hit_chance := get_hit_chance(source, target, terrain_avoid)
+		var hit_chance := get_hit_chance(source, target, terrain_avoid, source_ally_hit_bonus)
 		var roll := rng.randi_range(1, 100)
 		var did_hit := roll <= hit_chance
 		var did_crit := false

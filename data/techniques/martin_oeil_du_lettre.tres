@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TechniqueData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/technique_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Œil du Lettré"
+level_required = 30
+type = 0
+is_unique = true
+stat = 2
+stat_amount = 2
+stat2 = 7
+stat2_amount = 2
+trigger_weapon_type = 4
+avoid_bonus_while_equipped = 15

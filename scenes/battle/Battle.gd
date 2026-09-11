@@ -736,6 +736,8 @@ func execute_attack(attacker: Unit, defender: Unit) -> void:
 	var defender_terrain := grid.get_terrain_combat_bonus(defender.grid_pos)
 	attacker_terrain["extra_physical_def"] = _ally_def_bonus(attacker)
 	defender_terrain["extra_physical_def"] = _ally_def_bonus(defender)
+	attacker_terrain["ally_hit_bonus"] = _ally_hit_bonus(attacker)
+	defender_terrain["ally_hit_bonus"] = _ally_hit_bonus(defender)
 	SignalBus.combat_started.emit(attacker, defender)
 
 	# CombatResolver applies every strike's HP change immediately, all at
@@ -853,11 +855,11 @@ func _compute_combat_stats(attacker: Unit, defender: Unit) -> Dictionary:
 	var attacker_swing := CombatResolver.get_damage(attacker.unit_data, defender.unit_data, defender_terrain["def"], _ally_def_bonus(defender))
 	var defender_swing := CombatResolver.get_damage(defender.unit_data, attacker.unit_data, attacker_terrain["def"], _ally_def_bonus(attacker)) if defender_can_counter else 0
 	return {
-		"attacker_hit": CombatResolver.get_hit_chance(attacker.unit_data, defender.unit_data, defender_terrain["avoid"]),
+		"attacker_hit": CombatResolver.get_hit_chance(attacker.unit_data, defender.unit_data, defender_terrain["avoid"], _ally_hit_bonus(attacker)),
 		"attacker_dmg": attacker_swing * attacker_hits,
 		"attacker_hits": attacker_hits,
 		"attacker_crit": CombatResolver.get_crit_chance(attacker.unit_data, defender.unit_data),
-		"defender_hit": CombatResolver.get_hit_chance(defender.unit_data, attacker.unit_data, attacker_terrain["avoid"]) if defender_can_counter else 0,
+		"defender_hit": CombatResolver.get_hit_chance(defender.unit_data, attacker.unit_data, attacker_terrain["avoid"], _ally_hit_bonus(defender)) if defender_can_counter else 0,
 		"defender_dmg": defender_swing * defender_hits,
 		"defender_hits": defender_hits,
 		"defender_crit": CombatResolver.get_crit_chance(defender.unit_data, attacker.unit_data) if defender_can_counter else 0,
@@ -878,6 +880,22 @@ func _ally_def_bonus(unit: Unit) -> int:
 	var bonus := 0
 	for technique: TechniqueData in unit.unit_data.equipped_techniques:
 		if technique.trigger != TechniqueData.CombatTrigger.NEARBY_ALLIES or technique.effect != TechniqueData.CombatEffect.DEF_BONUS_PHYSICAL_ONLY:
+			continue
+		if _count_nearby_allies(unit, technique.trigger_ally_radius) >= technique.trigger_ally_count:
+			bonus += technique.effect_amount
+	return bonus
+
+## Same NEARBY_ALLIES shape as _ally_def_bonus, but for a HIT_BONUS effect
+## instead of DEF_BONUS_PHYSICAL_ONLY (Martin's "Lecture du Combat": +20 hit
+## with 2+ allies nearby). Threaded through as its own "ally_hit_bonus"
+## terrain-dict key rather than reusing "avoid"/"extra_physical_def" — this
+## is an ATTACKER-side precision bonus, not a defender-side one, and
+## CombatResolver.get_hit_chance keeps the two fully separate (see
+## extra_attacker_hit_bonus doc there).
+func _ally_hit_bonus(unit: Unit) -> int:
+	var bonus := 0
+	for technique: TechniqueData in unit.unit_data.equipped_techniques:
+		if technique.trigger != TechniqueData.CombatTrigger.NEARBY_ALLIES or technique.effect != TechniqueData.CombatEffect.HIT_BONUS:
 			continue
 		if _count_nearby_allies(unit, technique.trigger_ally_radius) >= technique.trigger_ally_count:
 			bonus += technique.effect_amount

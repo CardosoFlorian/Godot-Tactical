@@ -27,6 +27,12 @@ const DEBUFF_STAT_LABELS: Array[String] = ["", "FOR", "MAG", "TEC", "VIT", "CHA"
 ## be named in full rather than as an icon (e.g. TechniqueData's hover
 ## tooltip describing a weapon-conditional technique).
 const WEAPON_TYPE_LABELS: Array[String] = ["Épée", "Lance", "Hache", "Arc", "Tome", "Faux", "Gantelet"]
+## Indefinite article for each WEAPON_TYPE_LABELS entry ("une épée" but "un
+## tome") — real gender agreement, not just cosmetic; a hardcoded "une %s"
+## in technique descriptions was grammatically wrong for Arc/Tome/Gantelet
+## and only happened to read right for the first characters built (Épée,
+## Lance — both feminine).
+const WEAPON_TYPE_ARTICLES: Array[String] = ["une", "une", "une", "un", "un", "une", "un"]
 
 @export var display_name: String = "Weapon"
 @export var weapon_type: WeaponType = WeaponType.SWORD

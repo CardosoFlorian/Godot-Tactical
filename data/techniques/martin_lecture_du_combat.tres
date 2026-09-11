@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TechniqueData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/technique_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Lecture du Combat"
+level_required = 25
+type = 4
+trigger = 4
+trigger_ally_radius = 2
+trigger_ally_count = 2
+effect = 1
+effect_amount = 20

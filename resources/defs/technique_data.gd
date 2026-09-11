@@ -91,9 +91,16 @@ enum CombatTrigger { SELF_WEAPON, ENEMY_WEAPON, SELF_LOW_HP, SPEED_GAP_ADVANTAGE
 ## number.
 enum CombatEffect { DAMAGE_PERCENT_BONUS, HIT_BONUS, DAMAGE_REDUCTION_FLAT, DOUBLE_BEFORE_COUNTER, STR_BONUS_FLAT, DEF_BONUS_PHYSICAL_ONLY }
 
-## COMBAT_BONUS only.
+## COMBAT_BONUS only, EXCEPT it's also read (always as an implicit
+## SELF_WEAPON check — the unit's own currently wielded weapon) by
+## avoid_bonus_while_equipped below regardless of `type`, same
+## independent-of-type shape as post_combat_heal_percent_of_max.
 @export var trigger: CombatTrigger = CombatTrigger.SELF_WEAPON
-## SELF_WEAPON/ENEMY_WEAPON only.
+## SELF_WEAPON/ENEMY_WEAPON only, EXCEPT also used by
+## avoid_bonus_while_equipped (see its own doc) to gate on the wielded
+## weapon's type — e.g. Martin's Œil du Lettré only grants its avoid bonus
+## while he's actually holding a Tome, not just whenever the technique
+## occupies one of his 3 equip slots.
 @export var trigger_weapon_type: WeaponData.WeaponType = WeaponData.WeaponType.SWORD
 ## SELF_LOW_HP only — active while current HP is BELOW this % of max HP.
 @export var trigger_hp_threshold_percent: int = 50
@@ -119,6 +126,17 @@ enum CombatEffect { DAMAGE_PERCENT_BONUS, HIT_BONUS, DAMAGE_REDUCTION_FLAT, DOUB
 ## exchange resolves. See CombatResolver.resolve_combat's post-combat pass.
 @export var post_combat_heal_percent_of_max: int = 0
 
+## Flat avoid (esquive) bonus while this technique is equipped AND the unit
+## is currently wielding a weapon of `trigger_weapon_type` — same
+## "independent of `type`" shape as post_combat_heal_percent_of_max above
+## (added for Martin's capstone, Œil du Lettré: a permanent STAT_BUFF
+## Mag/Res bump PLUS a gated avoid bonus on the same resource, gated
+## specifically on wielding a Tome — the user's own wording, "tant qu'il
+## est équipé d'un tome"). 0 (default) means no such effect. Checked by
+## CombatResolver.get_hit_chance against the DEFENDER's own equipped
+## techniques — see CombatResolver._technique_avoid_bonus.
+@export var avoid_bonus_while_equipped: int = 0
+
 ## Whether this technique needs to be one of a unit's (at most
 ## UnitData.MAX_EQUIPPED_TECHNIQUES) EQUIPPED techniques to have any effect
 ## at all, rather than being permanently active from the instant it's
@@ -131,7 +149,7 @@ enum CombatEffect { DAMAGE_PERCENT_BONUS, HIT_BONUS, DAMAGE_REDUCTION_FLAT, DOUB
 ## Aurora's Cœur de Souveraine: its HP+3 stays permanent/always-on, but its
 ## post_combat_heal_percent_of_max proc specifically needs equipping to fire.
 func is_conditional() -> bool:
-	return type == TechniqueType.COMBAT_BONUS or post_combat_heal_percent_of_max > 0
+	return type == TechniqueType.COMBAT_BONUS or post_combat_heal_percent_of_max > 0 or avoid_bonus_while_equipped > 0
 
 ## Full stat names (unlike WeaponData.DEBUFF_STAT_LABELS' abbreviations —
 ## those are sized for a tight combat notice, this is for a readable hover
@@ -176,15 +194,18 @@ func _describe_stat_buff() -> String:
 	if post_combat_heal_percent_of_max > 0:
 		text += " (permanent, actif dès l'apprentissage même si la technique n'est pas équipée)"
 		text += "\nAprès un combat, si équipée : chance égale à sa Force de récupérer %d%% de ses PV max." % post_combat_heal_percent_of_max
+	if avoid_bonus_while_equipped > 0:
+		text += " (permanent, actif dès l'apprentissage même si la technique n'est pas équipée)"
+		text += "\nSi équipée, et si l'unité manie alors %s %s : Esquive +%d." % [WeaponData.WEAPON_TYPE_ARTICLES[trigger_weapon_type], WeaponData.WEAPON_TYPE_LABELS[trigger_weapon_type], avoid_bonus_while_equipped]
 	return text
 
 func _describe_combat_bonus() -> String:
 	var condition := ""
 	match trigger:
 		CombatTrigger.SELF_WEAPON:
-			condition = "Si l'unité est équipée d'une %s" % WeaponData.WEAPON_TYPE_LABELS[trigger_weapon_type]
+			condition = "Si l'unité est équipée d'%s %s" % [WeaponData.WEAPON_TYPE_ARTICLES[trigger_weapon_type], WeaponData.WEAPON_TYPE_LABELS[trigger_weapon_type]]
 		CombatTrigger.ENEMY_WEAPON:
-			condition = "Si l'ennemi est équipé d'une %s" % WeaponData.WEAPON_TYPE_LABELS[trigger_weapon_type]
+			condition = "Si l'ennemi est équipé d'%s %s" % [WeaponData.WEAPON_TYPE_ARTICLES[trigger_weapon_type], WeaponData.WEAPON_TYPE_LABELS[trigger_weapon_type]]
 		CombatTrigger.SELF_LOW_HP:
 			condition = "Si l'unité a moins de %d%% de ses PV max" % trigger_hp_threshold_percent
 		CombatTrigger.SPEED_GAP_ADVANTAGE:
