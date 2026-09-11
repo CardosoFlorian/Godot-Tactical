@@ -29,6 +29,78 @@ static func _triangle_mods(attacker: UnitData, defender: UnitData) -> Dictionary
 static func _is_magic(weapon: WeaponData) -> bool:
 	return weapon != null and weapon.weapon_type == WeaponData.WeaponType.TOME
 
+## Techniques a unit has actually reached (level_required <= its current
+## level) — see TechniqueData's COMBAT_BONUS doc. A technique stays in
+## `techniques` forever once granted (UnitData.gain_exp never removes it),
+## so this level filter is what tells "already unlocked" apart from "not
+## reached yet" for the ones (COMBAT_BONUS/PASSIVE) that don't get consumed
+## into a one-time stat change at grant time.
+static func _unlocked_techniques(unit: UnitData) -> Array[TechniqueData]:
+	var result: Array[TechniqueData] = []
+	for technique: TechniqueData in unit.techniques:
+		if technique.level_required <= unit.level:
+			result.append(technique)
+	return result
+
+## Attacker-side COMBAT_BONUS techniques that only fire against a specific
+## enemy weapon type (e.g. Aurora's "Anti Hache": +20% damage vs axes).
+static func _technique_damage_percent_bonus(attacker: UnitData, defender: UnitData) -> int:
+	var enemy_weapon := defender.get_combat_weapon()
+	if enemy_weapon == null:
+		return 0
+	var bonus := 0
+	for technique: TechniqueData in _unlocked_techniques(attacker):
+		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
+			continue
+		if technique.trigger == TechniqueData.CombatTrigger.ENEMY_WEAPON and technique.effect == TechniqueData.CombatEffect.DAMAGE_PERCENT_BONUS and enemy_weapon.weapon_type == technique.trigger_weapon_type:
+			bonus += technique.effect_amount
+	return bonus
+
+## Defender-side COMBAT_BONUS techniques active while below an HP% threshold
+## (e.g. Aurora's "Garde du Trône": -3 damage taken under 50% HP).
+static func _technique_damage_reduction(defender: UnitData) -> int:
+	var reduction := 0
+	var hp_percent := float(defender.get_current_hp()) / float(defender.get_max_hp()) * 100.0
+	for technique: TechniqueData in _unlocked_techniques(defender):
+		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
+			continue
+		if technique.trigger == TechniqueData.CombatTrigger.SELF_LOW_HP and technique.effect == TechniqueData.CombatEffect.DAMAGE_REDUCTION_FLAT and hp_percent < technique.trigger_hp_threshold_percent:
+			reduction += technique.effect_amount
+	return reduction
+
+## Attacker-side COMBAT_BONUS techniques that only fire while wielding a
+## specific weapon type (e.g. Aurora's "Lame Affûtée": +20 hit with a sword).
+static func _technique_hit_bonus(attacker: UnitData) -> int:
+	var own_weapon := attacker.get_combat_weapon()
+	if own_weapon == null:
+		return 0
+	var bonus := 0
+	for technique: TechniqueData in _unlocked_techniques(attacker):
+		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
+			continue
+		if technique.trigger == TechniqueData.CombatTrigger.SELF_WEAPON and technique.effect == TechniqueData.CombatEffect.HIT_BONUS and own_weapon.weapon_type == technique.trigger_weapon_type:
+			bonus += technique.effect_amount
+	return bonus
+
+## Rolls TechniqueData.post_combat_heal_percent_of_max for `unit`, once per
+## resolve_combat call, using the SAME rng resolve_combat already threads
+## through every hit/crit roll (deterministic under a seeded rng, matches
+## how every other roll in this function works — no separate
+## RandomNumberGenerator instance created here). Chance% is the unit's own
+## Force/STR stat, per the user's own design (a Sol/Astra-style stat-scaled
+## proc, not a fixed number) — see TechniqueData.post_combat_heal_percent_of_max.
+static func _apply_post_combat_techniques(unit: UnitData, rng: RandomNumberGenerator) -> void:
+	if not unit.is_alive():
+		return
+	for technique: TechniqueData in _unlocked_techniques(unit):
+		if technique.post_combat_heal_percent_of_max <= 0:
+			continue
+		var chance := clampi(unit.get_str(), 0, 100)
+		if rng.randi_range(1, 100) > chance:
+			continue
+		var heal_amount := int(unit.get_max_hp() * technique.post_combat_heal_percent_of_max / 100.0)
+		unit.set_current_hp(unit.get_current_hp() + heal_amount)
+
 ## A unit's own Speed, reduced if its own equipped weapon is heavier than
 ## its Constitution can carry (classic GBA Fire Emblem AS formula). Used for
 ## both doubling and avoid — a unit weighed down by its weapon is easier to
@@ -45,7 +117,7 @@ static func get_hit_chance(attacker: UnitData, defender: UnitData, terrain_avoid
 	if weapon == null:
 		return 0
 	var mods := _triangle_mods(attacker, defender)
-	var attack_hit := weapon.hit + attacker.get_skl() * 2 + attacker.get_lck() / 2 + int(mods["hit"])
+	var attack_hit := weapon.hit + attacker.get_skl() * 2 + attacker.get_lck() / 2 + int(mods["hit"]) + _technique_hit_bonus(attacker)
 	var avoid := get_effective_spd(defender) * 2 + defender.get_lck() + terrain_avoid_bonus
 	return clampi(attack_hit - avoid, 0, 100)
 
@@ -64,14 +136,25 @@ static func get_damage(attacker: UnitData, defender: UnitData, terrain_def_bonus
 	var weapon := attacker.get_combat_weapon()
 	if weapon == null:
 		return 0
+	var damage: int
 	if _is_magic(weapon):
 		var magic_power := attacker.get_mag() + weapon.might
 		var resistance := defender.get_res() + terrain_def_bonus
-		return maxi(0, magic_power - resistance)
-	var mods := _triangle_mods(attacker, defender)
-	var attack_power := attacker.get_str() + weapon.might + int(mods["might"])
-	var defense := defender.get_def() + terrain_def_bonus
-	return maxi(0, attack_power - defense)
+		damage = maxi(0, magic_power - resistance)
+	else:
+		var mods := _triangle_mods(attacker, defender)
+		var attack_power := attacker.get_str() + weapon.might + int(mods["might"])
+		var defense := defender.get_def() + terrain_def_bonus
+		damage = maxi(0, attack_power - defense)
+	# COMBAT_BONUS techniques (see TechniqueData) — attacker's %-vs-weapon-type
+	# bonus first, then defender's flat low-HP reduction, both applying to
+	# either damage path above so a general defensive technique like "Garde
+	# du Trône" isn't accidentally magic-only or physical-only.
+	var percent_bonus := _technique_damage_percent_bonus(attacker, defender)
+	if percent_bonus != 0:
+		damage = int(damage * (100 + percent_bonus) / 100.0)
+	damage = maxi(0, damage - _technique_damage_reduction(defender))
+	return damage
 
 static func can_double(attacker: UnitData, defender: UnitData) -> bool:
 	return get_effective_spd(attacker) >= get_effective_spd(defender) + DOUBLE_ATTACK_SPD_THRESHOLD
@@ -157,6 +240,12 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 		})
 		if not target.is_alive():
 			break
+
+	# Post-combat techniques (see TechniqueData.post_combat_heal_percent_of_max) —
+	# checked once per side after the whole exchange, not per strike like
+	# COMBAT_BONUS above, and skipped for whichever side died in it.
+	_apply_post_combat_techniques(attacker, rng)
+	_apply_post_combat_techniques(defender, rng)
 
 	return {
 		"log": log,

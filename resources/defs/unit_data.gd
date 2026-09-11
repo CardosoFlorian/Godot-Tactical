@@ -388,6 +388,12 @@ func _grant_technique_if_due() -> TechniqueData:
 		match technique.type:
 			TechniqueData.TechniqueType.STAT_BUFF:
 				_apply_stat_buff(technique.stat, technique.stat_amount)
+				if technique.stat2 != WeaponData.DebuffStat.NONE:
+					_apply_stat_buff(technique.stat2, technique.stat2_amount)
+				if technique.hp_bonus != 0:
+					base_hp += technique.hp_bonus
+					if current_hp >= 0:
+						current_hp += technique.hp_bonus
 			TechniqueData.TechniqueType.WEAPON_UNLOCK:
 				if not usable_weapon_types.has(technique.weapon_type):
 					usable_weapon_types.append(technique.weapon_type)
@@ -395,6 +401,8 @@ func _grant_technique_if_due() -> TechniqueData:
 				movement_type = technique.new_movement_type
 			TechniqueData.TechniqueType.PASSIVE:
 				pass  # data placeholder only — see TechniqueData
+			TechniqueData.TechniqueType.COMBAT_BONUS:
+				pass  # nothing to apply at grant time — checked live by CombatResolver instead, see TechniqueData
 		return technique
 	return null
 

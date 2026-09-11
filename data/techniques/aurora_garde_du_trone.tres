@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TechniqueData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/technique_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Garde du Trône"
+level_required = 25
+type = 4
+trigger = 2
+trigger_hp_threshold_percent = 50
+effect = 2
+effect_amount = 3

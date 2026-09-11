@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TechniqueData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/technique_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Cœur de Souveraine"
+level_required = 30
+is_unique = true
+type = 0
+hp_bonus = 3
+post_combat_heal_percent_of_max = 10
+description = "Sa lignée royale s'affirme pleinement — elle n'est plus l'héritière en exil, mais la souveraine que son royaume attendait."
