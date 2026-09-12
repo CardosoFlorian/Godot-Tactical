@@ -74,6 +74,11 @@ func _refresh_sprite() -> void:
 		_rig = unit_data.rigged_battle_sprite.instantiate()
 		add_child(_rig)
 		sprite.visible = false
+		# Only Kessa's rig implements this (picks axe vs bow pose off the
+		# equipped weapon type — see KessaBattleSprite.set_unit_data) —
+		# harmless no-op for every other rig, which has no method by this name.
+		if _rig.has_method("set_unit_data"):
+			_rig.set_unit_data(unit_data)
 	elif unit_data.battle_sprite:
 		sprite.texture = unit_data.battle_sprite
 	var team_tint := Color.WHITE if unit_data.team == UnitData.Team.PLAYER else Color(1.0, 0.75, 0.75)
@@ -111,6 +116,16 @@ func get_impact_point() -> Vector2:
 ## peak instead, since there's no real swing animation to sync to.
 func supports_attack_contact() -> bool:
 	return _rig != null and _rig.has_signal("attack_contact")
+
+## Re-runs the rig's own idle so a weapon swap is reflected immediately
+## instead of waiting for the unit's next attack to call play_idle() again
+## itself — needed now that a rig can pick its pose off the equipped
+## weapon (see KessaBattleSprite.set_unit_data, the first one to do this).
+## Harmless no-op for every other rig, whose idle never depends on the
+## weapon at all.
+func refresh_battle_sprite_pose() -> void:
+	if _rig and _rig.has_method("play_idle"):
+		_rig.play_idle()
 
 ## No-op if this unit has no rigged battle sprite (plain static sprite).
 ## `target_global_pos` is only meaningful to a ranged rig (e.g. Martin's

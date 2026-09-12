@@ -113,6 +113,59 @@ static func _technique_avoid_bonus(defender: UnitData) -> int:
 			bonus += technique.avoid_bonus_while_equipped
 	return bonus
 
+## Attacker-side COMBAT_BONUS techniques active while the unit's OWN hp% is
+## below a threshold (e.g. Kessa's "Instinct Guerrière": +15 crit under
+## 85% HP) — same trigger as _technique_damage_reduction (Garde du Trône),
+## but checked against the ATTACKER's own hp% instead of the defender's,
+## and folded into crit instead of damage reduction.
+static func _technique_crit_bonus(attacker: UnitData) -> int:
+	var bonus := 0
+	var hp_percent := float(attacker.get_current_hp()) / float(attacker.get_max_hp()) * 100.0
+	for technique: TechniqueData in _equipped_techniques(attacker):
+		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
+			continue
+		if technique.trigger == TechniqueData.CombatTrigger.SELF_LOW_HP and technique.effect == TechniqueData.CombatEffect.CRIT_BONUS_FLAT and hp_percent < technique.trigger_hp_threshold_percent:
+			bonus += technique.effect_amount
+	return bonus
+
+## Attacker-side COMBAT_BONUS techniques active while wielding a pure melee
+## weapon (min_range==1 AND max_range==1) — e.g. Kessa's "Sang de
+## Forgeronne": Force ET Technique +3 with any melee weapon, not one
+## specific type like STR_BONUS_FLAT's SELF_WEAPON techniques. Returns the
+## SAME magnitude applied everywhere Force/Technique matter (get_damage's
+## attack_power ×1, get_hit_chance's skill term ×2, get_crit_chance's skill
+## term ÷2) — as if the unit's real stats were higher, not independent
+## flat numbers per formula.
+static func _technique_melee_stat_bonus(attacker: UnitData) -> int:
+	var own_weapon := attacker.get_combat_weapon()
+	if own_weapon == null or own_weapon.min_range != 1 or own_weapon.max_range != 1:
+		return 0
+	var bonus := 0
+	for technique: TechniqueData in _equipped_techniques(attacker):
+		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
+			continue
+		if technique.trigger == TechniqueData.CombatTrigger.SELF_MELEE_WEAPON and technique.effect == TechniqueData.CombatEffect.STR_SKL_BONUS_FLAT:
+			bonus += technique.effect_amount
+	return bonus
+
+## Attacker-side COMBAT_BONUS techniques active only while the unit
+## INITIATES combat (e.g. Kessa's "Frappe Rapide": -15 enemy avoid while
+## she attacks) — same "only ever checked against the true initiating
+## attacker, never a counter-attacker" restriction as
+## _technique_double_before_counter (see its own doc and
+## TechniqueData.CombatTrigger.SELF_INITIATES). Mathematically identical to
+## a flat hit bonus (hit_chance = attack_hit - avoid either way) but kept as
+## its own named effect for the tooltip text and for
+## resolve_combat's "only apply to the initiator's own strikes" gating.
+static func _technique_initiator_avoid_reduction(attacker: UnitData) -> int:
+	var bonus := 0
+	for technique: TechniqueData in _equipped_techniques(attacker):
+		if technique.type != TechniqueData.TechniqueType.COMBAT_BONUS:
+			continue
+		if technique.trigger == TechniqueData.CombatTrigger.SELF_INITIATES and technique.effect == TechniqueData.CombatEffect.ENEMY_AVOID_REDUCTION_FLAT:
+			bonus += technique.effect_amount
+	return bonus
+
 ## Whether `attacker` should land its double-attack's second hit BEFORE
 ## `defender`'s counter, instead of the normal hit/counter/hit order (e.g.
 ## Lycith's Alacrité/Alacrité Supérieur: fast enough, both her hits land
@@ -169,7 +222,7 @@ static func get_hit_chance(attacker: UnitData, defender: UnitData, terrain_avoid
 	if weapon == null:
 		return 0
 	var mods := _triangle_mods(attacker, defender)
-	var attack_hit := weapon.hit + attacker.get_skl() * 2 + attacker.get_lck() / 2 + int(mods["hit"]) + _technique_hit_bonus(attacker) + extra_attacker_hit_bonus
+	var attack_hit := weapon.hit + attacker.get_skl() * 2 + attacker.get_lck() / 2 + int(mods["hit"]) + _technique_hit_bonus(attacker) + _technique_melee_stat_bonus(attacker) * 2 + extra_attacker_hit_bonus
 	var avoid := get_effective_spd(defender) * 2 + defender.get_lck() + terrain_avoid_bonus + _technique_avoid_bonus(defender)
 	return clampi(attack_hit - avoid, 0, 100)
 
@@ -177,8 +230,31 @@ static func get_crit_chance(attacker: UnitData, defender: UnitData) -> int:
 	var weapon := attacker.get_combat_weapon()
 	if weapon == null:
 		return 0
-	var crit := weapon.crit + attacker.get_skl() / 2 - defender.get_lck()
+	var crit := weapon.crit + attacker.get_skl() / 2 - defender.get_lck() + _technique_melee_stat_bonus(attacker) / 2 + _technique_crit_bonus(attacker)
 	return clampi(crit, 0, 100)
+
+## "Baseline" versions of the three combat formulas above, for a general
+## unit-info screen with no specific opponent in mind (UnitDetailPanel) —
+## every term that needs a real target (weapon triangle, the opponent's own
+## Lck/avoid/terrain) is simply left out, matching how most tactics games
+## show a unit's own contribution on its info sheet rather than a
+## matchup-specific final number; the real per-target number still only
+## ever comes from the actual targeting/forecast panel elsewhere in this
+## game (Battle._compute_combat_stats), which already has a real defender.
+static func get_base_hit(unit: UnitData) -> int:
+	var weapon := unit.get_combat_weapon()
+	if weapon == null:
+		return 0
+	return weapon.hit + unit.get_skl() * 2 + unit.get_lck() / 2 + _technique_hit_bonus(unit) + _technique_melee_stat_bonus(unit) * 2
+
+static func get_base_crit(unit: UnitData) -> int:
+	var weapon := unit.get_combat_weapon()
+	if weapon == null:
+		return 0
+	return weapon.crit + unit.get_skl() / 2 + _technique_melee_stat_bonus(unit) / 2 + _technique_crit_bonus(unit)
+
+static func get_base_avoid(unit: UnitData) -> int:
+	return get_effective_spd(unit) * 2 + unit.get_lck() + _technique_avoid_bonus(unit)
 
 ## Magic weapons deal damage from Mag against Res instead of Str against
 ## Def, and sit outside the physical weapon triangle entirely (Tome/Bow
@@ -202,7 +278,7 @@ static func get_damage(attacker: UnitData, defender: UnitData, terrain_def_bonus
 		damage = maxi(0, magic_power - resistance)
 	else:
 		var mods := _triangle_mods(attacker, defender)
-		var attack_power := attacker.get_str() + weapon.might + int(mods["might"]) + _technique_str_bonus(attacker)
+		var attack_power := attacker.get_str() + weapon.might + int(mods["might"]) + _technique_str_bonus(attacker) + _technique_melee_stat_bonus(attacker)
 		var defense := defender.get_def() + terrain_def_bonus + extra_physical_def
 		damage = maxi(0, attack_power - defense)
 	# COMBAT_BONUS techniques (see TechniqueData) — attacker's %-vs-weapon-type
@@ -264,6 +340,10 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 	## enough for the defender to also double, so no ordering conflict).
 	var order: Array[Dictionary] = []
 	var double_before_counter := attacker_doubles and _technique_double_before_counter(attacker, defender)
+	## Kessa's "Frappe Rapide" — only ever applies to the TRUE initiator's own
+	## strikes below (source == attacker), never to defender's counter, same
+	## restriction as double_before_counter above.
+	var initiator_avoid_reduction := _technique_initiator_avoid_reduction(attacker)
 	order.append({"source": attacker, "target": defender, "terrain": defender_terrain, "source_terrain": attacker_terrain})
 	if double_before_counter:
 		order.append({"source": attacker, "target": defender, "terrain": defender_terrain, "source_terrain": attacker_terrain})
@@ -286,11 +366,12 @@ static func resolve_combat(attacker: UnitData, defender: UnitData, distance: int
 		var terrain_avoid: int = terrain.get("avoid", 0)
 		var terrain_extra_physical_def: int = terrain.get("extra_physical_def", 0)
 		var source_ally_hit_bonus: int = source_terrain.get("ally_hit_bonus", 0)
+		var source_extra_hit: int = source_ally_hit_bonus + (initiator_avoid_reduction if source == attacker else 0)
 		if not source.is_alive() or not target.is_alive():
 			continue
 		if source.get_combat_weapon() == null:
 			continue
-		var hit_chance := get_hit_chance(source, target, terrain_avoid, source_ally_hit_bonus)
+		var hit_chance := get_hit_chance(source, target, terrain_avoid, source_extra_hit)
 		var roll := rng.randi_range(1, 100)
 		var did_hit := roll <= hit_chance
 		var did_crit := false

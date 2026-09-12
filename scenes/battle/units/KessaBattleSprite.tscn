@@ -15,3 +15,17 @@ visible = false
 texture_filter = 3
 scale = Vector2(0.07, 0.07)
 offset = Vector2(-2, -24)
+
+[node name="BowSprite" type="AnimatedSprite2D" parent="."]
+visible = false
+texture_filter = 3
+scale = Vector2(0.057, 0.057)
+offset = Vector2(-17, -19)
+
+[node name="BowAttackSprite" type="AnimatedSprite2D" parent="."]
+visible = false
+texture_filter = 3
+scale = Vector2(0.057, 0.057)
+offset = Vector2(-17, -19)
+
+[node name="BowShootSound" type="AudioStreamPlayer2D" parent="."]

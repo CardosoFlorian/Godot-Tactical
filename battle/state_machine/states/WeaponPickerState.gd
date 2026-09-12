@@ -42,6 +42,7 @@ func handle_weapon_selected(index: int) -> void:
 	if not weapon.matches_action(action):
 		return
 	unit_data.equipped_index = index
+	unit.refresh_battle_sprite_pose()
 	SignalBus.unit_selected.emit(unit)
 	battle.refresh_unit_info_display(unit)
 	state_machine.change_state(TARGET_STATE[action])

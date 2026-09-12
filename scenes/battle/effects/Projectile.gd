@@ -8,12 +8,19 @@ extends Node2D
 ## the projectile's flight.
 ##
 ## Reusable for any future ranged unit (a bow's arrow, another tome's bolt)
-## by swapping FRAME_DIR/FRAME_COUNT on a subclass or just editing the
-## constants below if this project only ever needs the one look at a time.
+## — `frame_dir`/`frame_prefix`/`frame_count`/`fps` are plain instance vars,
+## not consts, so the spawning rig can set them right after instantiate()
+## and before add_child() (which is when _ready() actually builds the
+## SpriteFrames) to swap in a different look. Defaults match the original
+## fireball so Martin's own spawn code (which never touches these) keeps
+## working unchanged — see KessaBattleSprite._spawn_projectile for the
+## first rig to actually override them (a single-frame arrow instead of a
+## 12-frame animated flame).
 
-const FRAME_DIR := "res://assets/vfx/fireball/"
-const FRAME_COUNT := 12
-const FPS := 12.0
+var frame_dir := "res://assets/vfx/fireball/"
+var frame_prefix := "fireball"
+var frame_count := 12
+var fps := 12.0
 ## pixels/sec. Deliberately low: the grid is only 32px/tile (see
 ## BattleGrid.CELL_SIZE) and attack range tops out at 2 tiles, so the actual
 ## flight distance is tiny (64px) regardless of the combat-scene camera
@@ -42,10 +49,10 @@ const HITSTOP_DURATION := 0.2
 func _ready() -> void:
 	var frames := SpriteFrames.new()
 	frames.add_animation("fly")
-	frames.set_animation_speed("fly", FPS)
+	frames.set_animation_speed("fly", fps)
 	frames.set_animation_loop("fly", true)
-	for i in range(1, FRAME_COUNT + 1):
-		var path := "%sfireball_%02d.png" % [FRAME_DIR, i]
+	for i in range(1, frame_count + 1):
+		var path := "%s%s_%02d.png" % [frame_dir, frame_prefix, i]
 		frames.add_frame("fly", load(path))
 	_sprite.sprite_frames = frames
 	_sprite.play("fly")

@@ -146,7 +146,22 @@ func _spawn_projectile() -> void:
 	get_tree().root.add_child(projectile)
 	var offset := HAND_OFFSET
 	offset.x *= signf(scale.x)  # mirror the hand offset when facing left
-	projectile.launch(global_position + offset, _pending_target, _pending_did_hit, _pending_weapon, _pending_did_crit)
+	var from := global_position + offset
+	# Aim at the enemy's own tile center shifted by the SAME HAND_OFFSET.y
+	# this rig's own spawn point uses, instead of _pending_target directly
+	# (that's Unit.get_impact_point(), a DIFFERENT height convention, chest
+	# height) — same fix as KessaBattleSprite._spawn_projectile, for the
+	# same reason: using a different convention on each end meant a
+	# same-row shot launched and aimed at two different heights, a real
+	# (if small, HAND_OFFSET.y=-11 vs -18) tilt. _pending_target already has
+	# Unit.IMPACT_POINT_OFFSET.y baked in, so subtracting it back out
+	# recovers the enemy's raw tile-center Y before reapplying this rig's
+	# own offset — same-row now comes out level, genuinely different-row
+	# targets (including straight up/down) still angle correctly since the
+	# real target position is what's used, never flattened.
+	var enemy_tile_center_y := _pending_target.y - Unit.IMPACT_POINT_OFFSET.y
+	var to := Vector2(_pending_target.x, enemy_tile_center_y + HAND_OFFSET.y)
+	projectile.launch(from, to, _pending_did_hit, _pending_weapon, _pending_did_crit)
 
 ## Same front-facing-by-design pose as his VN portraits/full-body art —
 ## unlike Aurora/Lycith's side-on battle art, his default pose doesn't read

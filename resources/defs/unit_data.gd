@@ -83,12 +83,14 @@ const MAX_EQUIPPED_TECHNIQUES := 3
 
 ## Subset of `techniques` (always already-learned and is_conditional() —
 ## see equip_technique) currently active. A conditional technique granted
-## while a slot is free auto-equips itself (see _grant_technique_if_due) so
-## it isn't dead on arrival before the user builds a real equip-swap UI;
-## once full, a newly learned one stays merely learned until manually
-## equipped. A non-conditional technique (permanent stat bump, weapon
-## unlock, movement change) is never in this list at all — it doesn't need
-## a slot, it's just always on.
+## while a slot is free auto-equips itself (see _grant_technique_if_due) —
+## it never auto-REPLACES an already-equipped one, only fills an open slot;
+## the user's own rule, matching real Fire Emblem ("on peut pas remplacer"
+## a technique automatically, but a genuinely empty slot filling itself on
+## learn is fine). Once full, a newly learned one stays merely learned
+## until the player manually swaps it in via UnitsScreen. A non-conditional
+## technique (permanent stat bump, weapon unlock, movement change) is never
+## in this list at all — it doesn't need a slot, it's just always on.
 @export var equipped_techniques: Array[TechniqueData] = []
 
 @export_group("Equipment")
@@ -331,10 +333,24 @@ func get_movement_type() -> ClassData.MovementType:
 ## MAX_LEVEL is already reached. Returns one result dict per level actually
 ## gained: {"level": int, "stat_gains": Dictionary[String, int] (only stats
 ## that rolled up are present, value always 1), "technique": TechniqueData
-## or null} — a big XP grant crossing 2 thresholds yields 2 entries, so
+## or null, "stat_values": Dictionary[String, int] (every base_X stat as it
+## stood RIGHT AFTER this specific level's roll — see below for why this
+## exists)} — a big XP grant crossing 2 thresholds yields 2 entries, so
 ## Battle.gd can show the level-up screen once per level in sequence, same
 ## as a real multi-level-up plays out one reveal at a time rather than
 ## folding straight to the end result.
+##
+## `stat_values` is captured HERE, mid-loop, rather than left for
+## LevelUpScreen to read live off `self` later — real bug caught live: this
+## whole function resolves EVERY crossed level synchronously before
+## returning, so by the time Battle.gd starts awaiting each level's screen
+## in sequence, base_X already sits at its FINAL post-all-levels value for
+## every one of them. A multi-level grant (the debug "+5 niveaux" button,
+## but also just a big single combat XP award) was showing the exact same
+## end-state number on every single one of the 5 screens instead of the
+## real value climbing step by step — user: "Kessa avait toujours 9 en
+## stats du niveau 1 à 6." Snapshotting the true value at roll-time, not
+## reconstructing it later from data that's already moved on, is the fix.
 func gain_exp(amount: int) -> Array[Dictionary]:
 	var results: Array[Dictionary] = []
 	if character_class != null:
@@ -345,7 +361,11 @@ func gain_exp(amount: int) -> Array[Dictionary]:
 		level += 1
 		var stat_gains := _roll_level_up_stats()
 		var technique := _grant_technique_if_due()
-		results.append({"level": level, "stat_gains": stat_gains, "technique": technique})
+		var stat_values := {
+			"hp": base_hp, "str": base_str, "mag": base_mag, "skl": base_skl,
+			"spd": base_spd, "lck": base_lck, "def": base_def, "res": base_res, "con": base_con,
+		}
+		results.append({"level": level, "stat_gains": stat_gains, "technique": technique, "stat_values": stat_values})
 	if level >= MAX_LEVEL:
 		exp = 0
 	return results
@@ -418,9 +438,16 @@ func _grant_technique_if_due() -> TechniqueData:
 				pass  # data placeholder only — see TechniqueData
 			TechniqueData.TechniqueType.COMBAT_BONUS:
 				pass  # nothing to apply at grant time — checked live by CombatResolver instead, see TechniqueData
-		# Auto-equip a freshly-learned conditional technique into any open
-		# slot — see equipped_techniques doc. A STAT_BUFF like Cœur de
-		# Souveraine still reaches here (is_conditional() checks its OWN
+		# Auto-equip a freshly-learned conditional technique into any OPEN
+		# slot only — never replaces an already-equipped one. Briefly
+		# removed entirely 2026-09-12 on a misread of the user's own ask
+		# ("dans les FE on peut pas [remplacer]") — corrected same day: the
+		# real rule was narrower, just "can't auto-REPLACE," which this
+		# size-check-gated append already satisfied from the start (it only
+		# ever appends when equipped_techniques.size() < MAX_EQUIPPED_TECHNIQUES,
+		# i.e. a free slot exists) — so this is the original behavior,
+		# restored, not a new one. A STAT_BUFF like Cœur de Souveraine still
+		# reaches here (is_conditional() checks its OWN
 		# post_combat_heal_percent_of_max, not `type`) even though its HP+3
 		# was already applied unconditionally above.
 		if technique.is_conditional() and equipped_techniques.size() < MAX_EQUIPPED_TECHNIQUES:

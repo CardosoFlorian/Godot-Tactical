@@ -6,6 +6,12 @@
 [ext_resource type="Texture2D" path="res://assets/placeholder/portraits/kessa.png" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/battle/units/KessaBattleSprite.tscn" id="6"]
 [ext_resource type="Texture2D" path="res://assets/units/kessa/full_body.png" id="7"]
+[ext_resource type="Resource" path="res://data/techniques/kessa_battante.tres" id="8"]
+[ext_resource type="Resource" path="res://data/techniques/kessa_anti_lance.tres" id="9"]
+[ext_resource type="Resource" path="res://data/techniques/kessa_maitrise_arc.tres" id="10"]
+[ext_resource type="Resource" path="res://data/techniques/kessa_instinct_guerriere.tres" id="11"]
+[ext_resource type="Resource" path="res://data/techniques/kessa_sang_de_forgeronne.tres" id="12"]
+[ext_resource type="Resource" path="res://data/techniques/kessa_frappe_rapide.tres" id="13"]
 
 [resource]
 script = ExtResource("1")
@@ -18,25 +24,26 @@ class_display_name = "Brigand"
 movement_type = 0
 usable_weapon_types = Array[int]([2])
 exp = 0
-base_hp = 24
-base_str = 8
+base_hp = 26
+base_str = 9
 base_mag = 0
-base_skl = 4
-base_spd = 5
-base_lck = 3
-base_def = 6
+base_skl = 8
+base_spd = 6
+base_lck = 4
+base_def = 4
 base_res = 2
 base_con = 10
 base_mov = 5
-growth_hp = 80
-growth_str = 50
+growth_hp = 95
+growth_str = 55
 growth_mag = 0
-growth_skl = 30
-growth_spd = 25
-growth_lck = 20
-growth_def = 30
-growth_res = 10
+growth_skl = 60
+growth_spd = 35
+growth_lck = 30
+growth_def = 20
+growth_res = 15
 growth_con = 0
+techniques = Array[TechniqueData]([ExtResource("8"), ExtResource("9"), ExtResource("10"), ExtResource("11"), ExtResource("12"), ExtResource("13")])
 inventory = Array[WeaponData]([ExtResource("3")])
 equipped_index = 0
 portrait = ExtResource("5")

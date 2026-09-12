@@ -118,8 +118,10 @@ signal continue_pressed
 	"res": $Center/Panel/Margin/VBox/HBox/StatsVBox/Grid/StatRes,
 	"con": $Center/Panel/Margin/VBox/HBox/StatsVBox/Grid/StatCon,
 }
-@onready var technique_label: Label = $Center/Panel/Margin/VBox/HBox/StatsVBox/TechniqueLabel
 @onready var continue_hint: Label = $Center/Panel/Margin/VBox/ContinueHint
+@onready var technique_popup_center: CenterContainer = $TechniquePopupCenter
+@onready var technique_name_label: Label = $TechniquePopupCenter/TechniquePopup/TechniqueMargin/TechniqueVBox/TechniqueNameLabel
+@onready var technique_effect_label: Label = $TechniquePopupCenter/TechniquePopup/TechniqueMargin/TechniqueVBox/TechniqueEffectLabel
 
 ## Set true only during the final "waiting for the player" stage — a click
 ## anywhere on screen advances (replaced the old Continue button per the
@@ -150,14 +152,15 @@ func _gui_input(event: InputEvent) -> void:
 		continue_pressed.emit()
 
 ## `entry` is one of the dicts UnitData.gain_exp returns:
-## {"level": int, "stat_gains": Dictionary[String,int], "technique": TechniqueData or null}.
+## {"level": int, "stat_gains": Dictionary[String,int], "technique": TechniqueData or null,
+## "stat_values": Dictionary[String,int]}.
 func show_level_up(unit_data: UnitData, entry: Dictionary) -> void:
 	var stat_gains: Dictionary = entry["stat_gains"]
-	var final_values := {
-		"hp": unit_data.base_hp, "str": unit_data.base_str, "mag": unit_data.base_mag,
-		"skl": unit_data.base_skl, "spd": unit_data.base_spd, "lck": unit_data.base_lck,
-		"def": unit_data.base_def, "res": unit_data.base_res, "con": unit_data.base_con,
-	}
+	# `entry["stat_values"]` — a snapshot taken AT THIS LEVEL, inside
+	# gain_exp's own loop — NOT unit_data.base_X read live here, which would
+	# already be sitting at the FINAL value of a multi-level grant by the
+	# time this runs (see gain_exp's own doc for the real bug this fixed).
+	var final_values: Dictionary = entry["stat_values"]
 
 	# Stage 1: banner alone — panel/continue not shown yet. quote_label and
 	# technique_label keep their fixed-size boxes reserved from the start
@@ -168,7 +171,8 @@ func show_level_up(unit_data: UnitData, entry: Dictionary) -> void:
 	continue_hint.text = ""
 	_accepting_continue_click = false
 	quote_label.text = ""
-	technique_label.text = ""
+	technique_popup_center.visible = false
+	technique_popup_center.modulate = Color(1, 1, 1, 1)
 	center.visible = false
 	show()
 	await _play_banner()
@@ -191,13 +195,35 @@ func show_level_up(unit_data: UnitData, entry: Dictionary) -> void:
 		_set_stat_label(stat_key, final_values[stat_key], true)
 		stat_gain_sound.play()
 
-	# Stage 4: technique banner (if any), then the reaction — portrait swaps
-	# to happy/sad and the character "says" a line matching the outcome.
+	# Stage 4: technique popup (if any) — name + its real mechanical effect
+	# (TechniqueData.get_effect_description(), the same auto-generated text
+	# UnitsScreen's hover tooltip already uses), held until the player
+	# clicks past it — a real gap the user flagged: a bare "Nouvelle
+	# technique : X" line buried in the stat grid didn't say what it DOES,
+	# and didn't feel like the distinct moment learning a technique should
+	# be. Reuses the same click-anywhere/_accepting_continue_click gate the
+	# final stage below uses — awaiting the same signal twice in one
+	# coroutine is fine, each await resolves independently.
 	var technique: TechniqueData = entry.get("technique")
 	if technique:
 		await get_tree().create_timer(STAT_REVEAL_DELAY).timeout
-		technique_label.text = "Nouvelle technique : %s" % technique.display_name
+		technique_name_label.text = technique.display_name
+		technique_effect_label.text = technique.get_effect_description()
+		technique_popup_center.modulate = Color(1, 1, 1, 0)
+		technique_popup_center.visible = true
+		var popup_in := create_tween()
+		popup_in.tween_property(technique_popup_center, "modulate:a", 1.0, 0.2)
+		await popup_in.finished
+		_accepting_continue_click = true
+		await continue_pressed
+		_accepting_continue_click = false
+		var popup_out := create_tween()
+		popup_out.tween_property(technique_popup_center, "modulate:a", 0.0, 0.15)
+		await popup_out.finished
+		technique_popup_center.visible = false
 
+	# Then the reaction — portrait swaps to happy/sad and the character
+	# "says" a line matching the outcome.
 	await get_tree().create_timer(RESULT_PAUSE).timeout
 	var is_good := stat_gains.size() >= GOOD_LEVEL_UP_THRESHOLD
 	portrait_rect.texture = _load_portrait(PORTRAIT_HAPPY if is_good else PORTRAIT_SAD, unit_data.character_id)

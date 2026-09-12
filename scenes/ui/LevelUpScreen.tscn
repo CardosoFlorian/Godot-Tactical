@@ -15,6 +15,18 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_techniquepopup"]
+bg_color = Color(0.05, 0.04, 0.03, 1.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7, 0.6, 0.3, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
 [node name="LevelUpScreen" type="Control"]
 anchors_preset = 15
 anchor_right = 1.0
@@ -181,15 +193,6 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Constit. 0"
 
-[node name="TechniqueLabel" type="Label" parent="Center/Panel/Margin/VBox/HBox/StatsVBox"]
-mouse_filter = 2
-custom_minimum_size = Vector2(0, 24)
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(1.0, 0.85, 0.3, 1)
-autowrap_mode = 2
-text = ""
-
 [node name="QuoteBox" type="PanelContainer" parent="Center/Panel/Margin/VBox"]
 mouse_filter = 2
 custom_minimum_size = Vector2(0, 100)
@@ -222,3 +225,64 @@ theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
 horizontal_alignment = 1
 text = ""
+
+[node name="TechniquePopupCenter" type="CenterContainer" parent="."]
+visible = false
+mouse_filter = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TechniquePopup" type="PanelContainer" parent="TechniquePopupCenter"]
+mouse_filter = 2
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_techniquepopup")
+
+[node name="TechniqueMargin" type="MarginContainer" parent="TechniquePopupCenter/TechniquePopup"]
+mouse_filter = 2
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="TechniqueVBox" type="VBoxContainer" parent="TechniquePopupCenter/TechniquePopup/TechniqueMargin"]
+mouse_filter = 2
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TechniqueTitleLabel" type="Label" parent="TechniquePopupCenter/TechniquePopup/TechniqueMargin/TechniqueVBox"]
+mouse_filter = 2
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.7, 0.85, 1.0, 1)
+horizontal_alignment = 1
+text = "Nouvelle technique !"
+
+[node name="TechniqueNameLabel" type="Label" parent="TechniquePopupCenter/TechniquePopup/TechniqueMargin/TechniqueVBox"]
+mouse_filter = 2
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(1.0, 0.85, 0.3, 1)
+horizontal_alignment = 1
+autowrap_mode = 2
+text = ""
+
+[node name="TechniqueEffectLabel" type="Label" parent="TechniquePopupCenter/TechniquePopup/TechniqueMargin/TechniqueVBox"]
+mouse_filter = 2
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+autowrap_mode = 2
+text = ""
+
+[node name="TechniqueContinueHint" type="Label" parent="TechniquePopupCenter/TechniquePopup/TechniqueMargin/TechniqueVBox"]
+mouse_filter = 2
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+horizontal_alignment = 1
+text = "Cliquez pour continuer"

@@ -28,6 +28,7 @@ func handle_weapon_selected(index: int) -> void:
 		return
 	var switched_weapon := index != battle.selected_unit_start_equipped_index
 	unit_data.equipped_index = index
+	unit.refresh_battle_sprite_pose()
 	# UnitInfoPanel only refreshes on this signal (see BattleHUD._on_unit_selected)
 	# — without re-emitting it here, the panel keeps showing whichever weapon
 	# was equipped when the unit was first selected, updating only on some

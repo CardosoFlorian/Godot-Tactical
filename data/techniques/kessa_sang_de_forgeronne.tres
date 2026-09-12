@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TechniqueData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/defs/technique_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Sang de Forgeronne"
+level_required = 25
+type = 4
+trigger = 5
+effect = 7
+effect_amount = 3

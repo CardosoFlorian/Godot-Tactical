@@ -63,18 +63,45 @@ const MOVEMENT_ICONS: Array[Texture2D] = [
 @onready var stat_mov: Label = $VBox/MovWeaponRow/StatMov
 @onready var weapon_icon: TextureRect = $VBox/MovWeaponRow/WeaponIcon
 @onready var weapon_label: Label = $VBox/MovWeaponRow/WeaponLabel
+@onready var details_button: Button = $VBox/DetailsButton
+
+const DETAIL_PANEL_SCENE := preload("res://scenes/ui/UnitDetailPanel.tscn")
+
+## Cached so details_button's handler (fired later, on a click, not at
+## show_unit() time) can re-show whichever unit this panel currently
+## displays without the caller needing to pass it again.
+var _shown_unit_data: UnitData
+var _shown_extra_def_bonus: int = 0
 
 func _ready() -> void:
 	hide()
+	details_button.pressed.connect(_on_details_pressed)
+
+func _on_details_pressed() -> void:
+	if _shown_unit_data == null:
+		return
+	var detail: UnitDetailPanel = DETAIL_PANEL_SCENE.instantiate()
+	get_tree().root.add_child(detail)
+	detail.show_unit(_shown_unit_data, _shown_extra_def_bonus)
 
 ## `extra_def_bonus` is a live positional technique bonus (Serment
 ## Royale-style) the caller computed externally — this panel has no
 ## grid/roster access to work it out itself (see Battle._ally_def_bonus).
-## A SELF_WEAPON Force bonus (Lance Puissante-style), by contrast, needs
-## nothing external — it only depends on unit_data's own equipped weapon
-## and techniques, so it's computed right here via
-## CombatResolver._technique_str_bonus, reused rather than duplicated.
+## A SELF_WEAPON Force bonus (Lance Puissante-style) and a SELF_MELEE_WEAPON
+## Force+Technique bonus (Kessa's Sang de Forgeronne), by contrast, need
+## nothing external — they only depend on unit_data's own equipped weapon
+## and techniques, so they're computed right here via
+## CombatResolver._technique_str_bonus/_technique_melee_stat_bonus, reused
+## rather than duplicated. Real gap caught live: Sang de Forgeronne's combat
+## math was already correct and verified, but only Force/Défense had ever
+## been wired into this panel for a technique bonus — Force's OWN
+## _technique_melee_stat_bonus contribution, and Technique's entirely, were
+## both missing, so Kessa never showed either half of her own equipped
+## technique's effect here even though Lycith's equivalent bonus (a
+## different mechanism, but same "show it") always had.
 func show_unit(unit_data: UnitData, extra_def_bonus: int = 0) -> void:
+	_shown_unit_data = unit_data
+	_shown_extra_def_bonus = extra_def_bonus
 	name_label.text = unit_data.display_name
 	# No unit shows a class name here anymore, not even a regular enemy —
 	# display_name alone (e.g. "Bandit") already carries that identity per
@@ -95,9 +122,10 @@ func show_unit(unit_data: UnitData, extra_def_bonus: int = 0) -> void:
 	if exp_bar.visible:
 		_set_exp_display(unit_data.exp)
 
-	_set_stat(stat_str, "Force", unit_data.get_str(), unit_data, WeaponData.DebuffStat.STR, CombatResolver._technique_str_bonus(unit_data))
+	var melee_stat_bonus := CombatResolver._technique_melee_stat_bonus(unit_data)
+	_set_stat(stat_str, "Force", unit_data.get_str(), unit_data, WeaponData.DebuffStat.STR, CombatResolver._technique_str_bonus(unit_data) + melee_stat_bonus)
 	_set_stat(stat_mag, "Magie", unit_data.get_mag(), unit_data, WeaponData.DebuffStat.MAG)
-	_set_stat(stat_skl, "Technique", unit_data.get_skl(), unit_data, WeaponData.DebuffStat.SKL)
+	_set_stat(stat_skl, "Technique", unit_data.get_skl(), unit_data, WeaponData.DebuffStat.SKL, melee_stat_bonus)
 	_set_stat(stat_spd, "Vitesse", unit_data.get_spd(), unit_data, WeaponData.DebuffStat.SPD)
 	_set_stat(stat_def, "Defense", unit_data.get_def(), unit_data, WeaponData.DebuffStat.DEF, extra_def_bonus)
 	_set_stat(stat_res, "Resist.", unit_data.get_res(), unit_data, WeaponData.DebuffStat.RES)
@@ -120,8 +148,10 @@ func show_unit(unit_data: UnitData, extra_def_bonus: int = 0) -> void:
 ## turns, so a color from last time needs to be explicitly reset once it no
 ## longer applies. `bonus` takes priority over a debuff on the same stat —
 ## not expected to co-occur in practice, but a buffed display reads more
-## usefully than a red one if it somehow did.
-func _set_stat(label: Label, prefix: String, value: int, unit_data: UnitData, stat: WeaponData.DebuffStat, bonus: int = 0) -> void:
+## usefully than a red one if it somehow did. Static (doesn't touch `self`
+## at all) so UnitDetailPanel can reuse the exact same coloring logic
+## instead of duplicating it.
+static func _set_stat(label: Label, prefix: String, value: int, unit_data: UnitData, stat: WeaponData.DebuffStat, bonus: int = 0) -> void:
 	if bonus > 0:
 		label.text = "%s %d (+%d)" % [prefix, value + bonus, bonus]
 		label.add_theme_color_override("font_color", BUFF_STAT_COLOR)

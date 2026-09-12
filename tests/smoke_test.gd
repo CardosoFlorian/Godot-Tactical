@@ -13,7 +13,7 @@ extends SceneTree
 ## quirk of this test harness only — the real game boots normally through
 ## Main.tscn and never hits this ordering issue.
 
-const MAX_WAIT_FRAMES := 600  # ~10s at 60fps; a bounded safety net, never an infinite hang.
+const MAX_WAIT_FRAMES := 1200  # ~20s at 60fps; bumped from 600 once StartTurnState started awaiting a real ~1s phase banner on every transition (see BattleHUD.play_player/enemy_phase_banner) — a bounded safety net, never an infinite hang.
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -73,6 +73,21 @@ func _test_full_turn_flow() -> bool:
 	var ok := true
 	var battle = _make_battle()
 	var sm = battle.state_machine
+
+	# StartTurnState now awaits the Player Phase banner (BattleHUD.
+	# play_player_phase_banner) before entering unit_select — real behavior,
+	# not a bug (units must not be actionable while the banner is up), but
+	# it means the state machine genuinely isn't in unit_select the instant
+	# the battle is created anymore. Wait for it, bounded, same pattern the
+	# enemy-phase-to-player-phase wait below already uses.
+	var start_frames := 0
+	while sm.current_state_name != "unit_select":
+		await process_frame
+		start_frames += 1
+		if start_frames > MAX_WAIT_FRAMES:
+			printerr("FAIL: timed out waiting for the initial Player Phase banner to finish")
+			ok = false
+			break
 
 	for unit in battle.player_units.duplicate():
 		if sm.current_state_name != "unit_select":

@@ -723,6 +723,7 @@ func undo_move(unit: Unit) -> void:
 func revert_equipped_weapon(unit: Unit) -> void:
 	if unit.unit_data.equipped_index != selected_unit_start_equipped_index:
 		unit.unit_data.equipped_index = selected_unit_start_equipped_index
+		unit.refresh_battle_sprite_pose()
 		SignalBus.unit_selected.emit(unit)
 		refresh_unit_info_display(unit)
 
@@ -855,7 +856,7 @@ func _compute_combat_stats(attacker: Unit, defender: Unit) -> Dictionary:
 	var attacker_swing := CombatResolver.get_damage(attacker.unit_data, defender.unit_data, defender_terrain["def"], _ally_def_bonus(defender))
 	var defender_swing := CombatResolver.get_damage(defender.unit_data, attacker.unit_data, attacker_terrain["def"], _ally_def_bonus(attacker)) if defender_can_counter else 0
 	return {
-		"attacker_hit": CombatResolver.get_hit_chance(attacker.unit_data, defender.unit_data, defender_terrain["avoid"], _ally_hit_bonus(attacker)),
+		"attacker_hit": CombatResolver.get_hit_chance(attacker.unit_data, defender.unit_data, defender_terrain["avoid"], _ally_hit_bonus(attacker) + CombatResolver._technique_initiator_avoid_reduction(attacker.unit_data)),
 		"attacker_dmg": attacker_swing * attacker_hits,
 		"attacker_hits": attacker_hits,
 		"attacker_crit": CombatResolver.get_crit_chance(attacker.unit_data, defender.unit_data),
@@ -1002,7 +1003,15 @@ func _play_combat_scene(attacker: Unit, defender: Unit, log: Array, stats: Dicti
 			# frame in its own attack animation) is what covers the distance
 			# AND plays the impact sound/particles on arrival — doing it here
 			# too would double up and land before the projectile even gets
-			# there.
+			# there. The crit PORTRAIT cut-in is the one piece Projectile.gd
+			# can't do itself (it's a Battle-level UI overlay, no reference
+			# back to Battle) — real gap the user caught live testing
+			# Kessa's bow: a ranged crit got the projectile's own hitstop/
+			# burst but never the banner. Shown up front, same "dramatic
+			# pause before the hit lands" ordering the non-contact melee
+			# branch below uses.
+			if strike["hit"] and strike["crit"]:
+				await _play_crit_portrait(source)
 			await source.play_attack_animation(target.get_impact_point(), strike["hit"], source_weapon, strike["crit"])
 		else:
 			var bump_dir := approach.normalized() if source == attacker else -approach.normalized()

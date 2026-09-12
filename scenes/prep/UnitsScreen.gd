@@ -22,6 +22,14 @@ extends Control
 const CARD_SCENE := preload("res://scenes/prep/RosterCard.tscn")
 const EQUIP_ROW_SCENE := preload("res://scenes/ui/EquipMenuRow.tscn")
 
+## Marks a technique as tied to one specific character (TechniqueData.is_unique)
+## everywhere its name is shown here (slot buttons, picker rows, the
+## "toujours actives" list) — a star prefix plus a distinct gold color, so
+## it never reads as "just another technique" that could be picked for
+## anyone else once a future copy-between-units system exists.
+const UNIQUE_TECHNIQUE_COLOR := Color(1.0, 0.85, 0.2, 1)
+const UNIQUE_TECHNIQUE_PREFIX := "★ "
+
 signal closed
 signal squad_toggled(unit_data: UnitData, in_squad: bool)
 
@@ -40,7 +48,6 @@ signal squad_toggled(unit_data: UnitData, in_squad: bool)
 ## it. Now only the HBox row (whose own columns scroll internally) shares
 ## the flexible space; these buttons and Close keep a fixed height below it.
 @onready var squad_toggle_button: Button = $Panel/Margin/VBox/ButtonsRow/SquadToggleButton
-@onready var debug_unlock_button: Button = $Panel/Margin/VBox/ButtonsRow/DebugUnlockButton
 @onready var close_button: Button = $Panel/Margin/VBox/CloseButton
 
 ## Dims (and blocks clicks to) everything behind the picker while it's open —
@@ -84,7 +91,6 @@ func _ready() -> void:
 	picker_panel.hide()
 	close_button.pressed.connect(func(): closed.emit())
 	squad_toggle_button.pressed.connect(_on_squad_toggle_pressed)
-	debug_unlock_button.pressed.connect(_on_debug_unlock_pressed)
 	clear_slot_button.pressed.connect(_on_clear_slot_pressed)
 	picker_cancel_button.pressed.connect(_on_picker_cancel_pressed)
 
@@ -156,18 +162,6 @@ func _on_squad_toggle_pressed() -> void:
 	var in_squad := _squad.has(_viewing)
 	squad_toggled.emit(_viewing, not in_squad)
 
-## TEMPORARY test harness — same "debug button, remove once done" pattern
-## the old level-up debug XP button followed (see upcoming_level_up_stats_system
-## memory). Grants enough XP to instantly reach MAX_LEVEL so every technique
-## on the viewed unit unlocks (and auto-equips up to the cap), without
-## needing a real playthrough to test one.
-func _on_debug_unlock_pressed() -> void:
-	if _viewing == null:
-		return
-	var xp_needed := (UnitData.MAX_LEVEL - _viewing.level) * UnitData.EXP_TO_LEVEL + UnitData.EXP_TO_LEVEL
-	_viewing.gain_exp(xp_needed)
-	_build_roster_list()
-	_show_detail(_viewing)
 
 ## One button per equip slot (always exactly MAX_EQUIPPED_TECHNIQUES of
 ## them) showing whichever technique currently occupies it, or "Emplacement
@@ -187,7 +181,10 @@ func _make_slot_button(unit_data: UnitData, slot_index: int, technique: Techniqu
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(0, 48)
 	if technique:
-		button.text = "%d. %s" % [slot_index + 1, technique.display_name]
+		var name_part := (UNIQUE_TECHNIQUE_PREFIX + technique.display_name) if technique.is_unique else technique.display_name
+		button.text = "%d. %s" % [slot_index + 1, name_part]
+		if technique.is_unique:
+			button.add_theme_color_override("font_color", UNIQUE_TECHNIQUE_COLOR)
 		var description := technique.get_effect_description()
 		button.mouse_entered.connect(func(): description_label.text = description)
 	else:
@@ -208,9 +205,10 @@ func _update_always_active_label(unit_data: UnitData) -> void:
 	always_active_title_label.visible = not always_active.is_empty()
 	for technique in always_active:
 		var label := Label.new()
-		label.text = "• %s" % technique.display_name
+		var name_part := (UNIQUE_TECHNIQUE_PREFIX + technique.display_name) if technique.is_unique else technique.display_name
+		label.text = "• %s" % name_part
 		label.add_theme_font_size_override("font_size", 12)
-		label.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0, 1))
+		label.add_theme_color_override("font_color", UNIQUE_TECHNIQUE_COLOR if technique.is_unique else Color(0.7, 0.85, 1.0, 1))
 		label.mouse_filter = Control.MOUSE_FILTER_STOP
 		var description := technique.get_effect_description()
 		label.mouse_entered.connect(func(): description_label.text = description)
@@ -246,8 +244,11 @@ func _make_picker_row(unit_data: UnitData, technique: TechniqueData) -> Control:
 	var unlocked := technique.level_required <= unit_data.level
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(0, 40)
-	button.text = "%s (niv.%d)%s" % [technique.display_name, technique.level_required, "" if unlocked else " — non débloquée"]
+	var name_part := (UNIQUE_TECHNIQUE_PREFIX + technique.display_name) if technique.is_unique else technique.display_name
+	button.text = "%s (niv.%d)%s" % [name_part, technique.level_required, "" if unlocked else " — non débloquée"]
 	button.disabled = not unlocked
+	if technique.is_unique:
+		button.add_theme_color_override("font_color", UNIQUE_TECHNIQUE_COLOR)
 	if not unlocked:
 		button.modulate = Color(1, 1, 1, 0.4)
 	var description := technique.get_effect_description()

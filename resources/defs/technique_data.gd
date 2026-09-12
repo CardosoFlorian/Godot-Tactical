@@ -81,15 +81,33 @@ enum TechniqueType { STAT_BUFF, WEAPON_UNLOCK, MOVEMENT_CHANGE, PASSIVE, COMBAT_
 ## folds the result into a NEW "extra_physical_def" terrain-dict key kept
 ## deliberately separate from "def" (see get_damage) — Serment Royale is
 ## Défense only, not Résistance, and terrain "def" already feeds both.
-enum CombatTrigger { SELF_WEAPON, ENEMY_WEAPON, SELF_LOW_HP, SPEED_GAP_ADVANTAGE, NEARBY_ALLIES }
+## SELF_MELEE_WEAPON (added for Kessa's Sang de Forgeronne) checks the
+## unit's own weapon RANGE (min_range==1 and max_range==1) instead of a
+## specific weapon TYPE — see CombatResolver._technique_melee_stat_bonus.
+## SELF_INITIATES (added for Kessa's Frappe Rapide) needs the same
+## "only ever checked against the true initiating attacker, never a
+## defender/counter-attacker" restriction as SPEED_GAP_ADVANTAGE's own
+## doc — CombatResolver.resolve_combat computes it once against `attacker`
+## specifically, before building the strike order, same pattern as
+## _technique_double_before_counter.
+enum CombatTrigger { SELF_WEAPON, ENEMY_WEAPON, SELF_LOW_HP, SPEED_GAP_ADVANTAGE, NEARBY_ALLIES, SELF_MELEE_WEAPON, SELF_INITIATES }
 ## STR_BONUS_FLAT and DEF_BONUS_PHYSICAL_ONLY both add to the physical
 ## attack_power/defense computed inside get_damage's non-magic branch (NOT a
 ## post-calc flat reduction like DAMAGE_REDUCTION_FLAT, which applies after
 ## and to both damage paths) — see get_damage for exactly where each lands.
 ## DOUBLE_BEFORE_COUNTER carries no magnitude (effect_amount is unused for
 ## it) — it's a yes/no reordering of resolve_combat's strike sequence, not a
-## number.
-enum CombatEffect { DAMAGE_PERCENT_BONUS, HIT_BONUS, DAMAGE_REDUCTION_FLAT, DOUBLE_BEFORE_COUNTER, STR_BONUS_FLAT, DEF_BONUS_PHYSICAL_ONLY }
+## number. CRIT_BONUS_FLAT adds straight onto get_crit_chance's result.
+## STR_SKL_BONUS_FLAT (Sang de Forgeronne: melee weapon → Force ET Technique
+## +3) applies the SAME effect_amount to both Force (get_damage's
+## attack_power, weight ×1) and Technique (get_hit_chance's ×2 term AND
+## get_crit_chance's ÷2 term) — as if the unit's real Force/Technique stats
+## were both higher, not two independent flat numbers. ENEMY_AVOID_REDUCTION_FLAT
+## (Frappe Rapide) is mathematically identical to a HIT_BONUS (hit_chance is
+## just attack_hit - avoid, so -avoid and +hit are the same clamped result)
+## but named for what the design actually says, and gated on SELF_INITIATES
+## rather than a weapon check.
+enum CombatEffect { DAMAGE_PERCENT_BONUS, HIT_BONUS, DAMAGE_REDUCTION_FLAT, DOUBLE_BEFORE_COUNTER, STR_BONUS_FLAT, DEF_BONUS_PHYSICAL_ONLY, CRIT_BONUS_FLAT, STR_SKL_BONUS_FLAT, ENEMY_AVOID_REDUCTION_FLAT }
 
 ## COMBAT_BONUS only, EXCEPT it's also read (always as an implicit
 ## SELF_WEAPON check — the unit's own currently wielded weapon) by
@@ -212,6 +230,10 @@ func _describe_combat_bonus() -> String:
 			condition = "Si l'unité initie le combat avec au moins %d points de Vitesse de plus que l'ennemi" % trigger_spd_gap
 		CombatTrigger.NEARBY_ALLIES:
 			condition = "Si %d alliés ou plus se trouvent à %d case(s) ou moins" % [trigger_ally_count, trigger_ally_radius]
+		CombatTrigger.SELF_MELEE_WEAPON:
+			condition = "Si l'unité est équipée d'une arme à 1 case de portée"
+		CombatTrigger.SELF_INITIATES:
+			condition = "Si l'unité engage le combat"
 	var effect_text := ""
 	match effect:
 		CombatEffect.DAMAGE_PERCENT_BONUS:
@@ -226,4 +248,10 @@ func _describe_combat_bonus() -> String:
 			effect_text = "augmente la Force de %d." % effect_amount
 		CombatEffect.DEF_BONUS_PHYSICAL_ONLY:
 			effect_text = "augmente la Défense de %d." % effect_amount
+		CombatEffect.CRIT_BONUS_FLAT:
+			effect_text = "augmente le taux de coup critique de %d." % effect_amount
+		CombatEffect.STR_SKL_BONUS_FLAT:
+			effect_text = "augmente la Force et la Technique de %d." % effect_amount
+		CombatEffect.ENEMY_AVOID_REDUCTION_FLAT:
+			effect_text = "réduit l'esquive de l'ennemi de %d durant ce combat." % effect_amount
 	return "%s, %s" % [condition, effect_text]
