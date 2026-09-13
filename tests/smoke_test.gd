@@ -223,7 +223,7 @@ func _test_prep_phase_build() -> bool:
 
 	# Enemies are pre-spawned on the camp map itself (see _spawn_enemies) so
 	# "Observer" has something to hover before combat even starts.
-	var enemy_zone_tile := Vector2i(8, 2)  # vex's chapter1.tres spawn position
+	var enemy_zone_tile := Vector2i(8, 2)  # the axe Bandit's chapter1.tres spawn position
 	if prep.grid.get_occupant(enemy_zone_tile) == null:
 		printerr("FAIL: expected an enemy pre-spawned on the camp map at ", enemy_zone_tile)
 		ok = false

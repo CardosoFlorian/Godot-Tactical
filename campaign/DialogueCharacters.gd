@@ -25,10 +25,10 @@ const PORTRAIT_DIR := "res://assets/placeholder/portraits/"
 ## separately in register_all() instead of through this flat list.
 ##
 ## Only Aurora's 3 real companions get named Dialogic characters. Regular
-## enemies (Vex/Rurik/Ilsa/Skarn and future generic spawns) use class-based
-## display names ("Bandit", "Chevalier", ...) instead of a person's name and
-## never speak in dialogue, so they have no entry here — only named/boss
-## enemies would ever need one.
+## enemies (rurik/ilsa/skarn, the two Bandit variants, and future generic
+## spawns) use class-based display names ("Bandit", "Chevalier", ...)
+## instead of a person's name and never speak in dialogue, so they have no
+## entry here — only named/boss enemies would ever need one.
 ##
 ## Doran removed 2026-09-05: replaced by Lycith (see LYCITH_PORTRAITS below)
 ## as one of Aurora's 3 companions in every timeline. Elyn removed 2026-09-07,
