@@ -85,6 +85,13 @@ const CRIT_PORTRAIT_DATA := {
 	"lycith": {"path": "res://assets/placeholder/portraits/lycith/mad.png", "crop": Rect2(30, 95, 310, 110)},
 	"martin": {"path": "res://assets/placeholder/portraits/martin/mad.png", "crop": Rect2(60, 50, 260, 90)},
 	"kessa": {"path": "res://assets/placeholder/portraits/kessa/mad.png", "crop": Rect2(40, 125, 260, 110)},
+	# First enemy crit portrait — source canvas is a much bigger 1254x1254
+	# (the other four are already tightly cropped to ~370-450px busts), so
+	# this crop is proportionally much larger. Eye-line estimated from a
+	# brightness profile (hair ends / forehead begins ~y=300, mouth/jaw
+	# shadow starts ~y=740) rather than a real grid overlay — same "not yet
+	# confirmed against a real screenshot" caveat as every other crop here.
+	"vex": {"path": "res://assets/placeholder/portraits/vex/mad.png", "crop": Rect2(157, 290, 940, 340)},
 }
 ## Real seconds (ignores time_scale, same as the other crit timers) — kept
 ## short on purpose per the user ("le temps qu'on voit le truc minimum"),
@@ -1130,9 +1137,9 @@ func _play_miss_sound(position: Vector2) -> void:
 ## since this is meant to happen BEFORE the impact effect/hit-stop, not
 ## alongside them: crit lands → cut to portrait (brief) → cut back → THEN
 ## the normal burst/flash/hit-stop plays as the payoff. No-op if `source`'s
-## character isn't in CRIT_PORTRAIT_DATA (every current enemy) — falls back
-## to just the flash+hit-stop, same as a normal named-companion crit minus
-## the cut-in.
+## character isn't in CRIT_PORTRAIT_DATA (most enemies still, aside from
+## "vex"/Bandit) — falls back to just the flash+hit-stop, same as a normal
+## named-companion crit minus the cut-in.
 func _play_crit_portrait(source: Unit) -> void:
 	var data: Dictionary = CRIT_PORTRAIT_DATA.get(source.unit_data.character_id, {})
 	if data.is_empty():

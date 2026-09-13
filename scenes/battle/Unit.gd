@@ -81,8 +81,20 @@ func _refresh_sprite() -> void:
 			_rig.set_unit_data(unit_data)
 	elif unit_data.battle_sprite:
 		sprite.texture = unit_data.battle_sprite
-	var team_tint := Color.WHITE if unit_data.team == UnitData.Team.PLAYER else Color(1.0, 0.75, 0.75)
-	var tint := team_tint.darkened(0.25) if has_acted else team_tint
+	# No per-team modulate anymore — real, fully-colored enemy art (the axe
+	# Bandit) read as "un filtre rouge dégueu" under the old pinkish
+	# multiply, which only ever looked fine over the old flat placeholder
+	# icons. Team is already conveyed elsewhere (move/attack-range tile
+	# colors, HUD panels).
+	#
+	# The acted-dim itself is now PLAYER-only too — user's own call: "on
+	# s'en fout de savoir qui a déjà agi quand c'est pas le tour du
+	# joueur." Whether an ENEMY has acted is meaningless information to the
+	# player (they never give it orders), so an enemy's sprite never dims
+	# at all now, regardless of has_acted — only a player unit visibly
+	# dims once it's used its turn, the actual audience for that cue.
+	var should_dim := has_acted and unit_data.team == UnitData.Team.PLAYER
+	var tint := Color.WHITE.darkened(0.25) if should_dim else Color.WHITE
 	if _rig:
 		_rig.modulate = tint
 	else:
