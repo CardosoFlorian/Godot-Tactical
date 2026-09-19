@@ -34,8 +34,10 @@ vertical_alignment = 1
 text = "Phase Joueur"
 
 [node name="PlayerPhaseSound" type="AudioStreamPlayer" parent="."]
+volume_db = -12.0
 
 [node name="EnemyPhaseSound" type="AudioStreamPlayer" parent="."]
+volume_db = -12.0
 
 [node name="UnitInfoPanel" parent="." instance=ExtResource("2")]
 

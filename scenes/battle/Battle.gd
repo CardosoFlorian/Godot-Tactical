@@ -96,6 +96,10 @@ const CRIT_PORTRAIT_DATA := {
 	# same brightness-profile eye-line estimate method as the axe one above
 	# (hair ends / forehead begins ~y=390, mouth/jaw shadow starts ~y=810).
 	"bandit_sword": {"path": "res://assets/placeholder/portraits/bandit_sword/mad.png", "crop": Rect2(157, 380, 940, 340)},
+	# Third Bandit variant (lance) — same 1254x1254 canvas convention and
+	# same brightness-profile eye-line estimate method as the other two
+	# (brow-shadow dip ~y=450, mouth/jaw shadow starting ~y=750).
+	"bandit_lance": {"path": "res://assets/placeholder/portraits/bandit_lance/mad.png", "crop": Rect2(157, 410, 940, 340)},
 }
 ## Real seconds (ignores time_scale, same as the other crit timers) — kept
 ## short on purpose per the user ("le temps qu'on voit le truc minimum"),
@@ -349,8 +353,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		state_machine.handle_cancel()
 
+## Real bug caught live: `end_turn_button` is never disabled, so clicking it
+## right after an action (while that action's own await chain — combat
+## scene, EXP bar fill, a possible level-up — is still resolving) could
+## start the enemy-phase banner mid-animation, visually cutting the EXP bar
+## off before it finished filling. `state_machine` only ever returns to
+## "unit_select" once a whole action's await chain (including EXP) has
+## fully completed, so gating on that — rather than trying to track a
+## separate "busy" flag — reuses a state the code already maintains
+## correctly.
 func _on_end_turn_pressed() -> void:
-	if current_phase == UnitData.Team.PLAYER:
+	if current_phase == UnitData.Team.PLAYER and state_machine.current_state_name == "unit_select":
 		end_player_turn()
 
 func _build_battle(data: BattleMapData) -> void:
